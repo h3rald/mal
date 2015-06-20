@@ -12,7 +12,7 @@ PYTHON = python
 
 IMPLS = bash c clojure coffee cpp crystal cs erlang factor forth go groovy \
 	haskell java julia js lua make mal ocaml matlab miniMAL nim \
-	perl php ps python r racket rpython ruby rust scala swift vb guile
+	perl php ps python r racket rpython ruby rust scala swift vb guile nim2
 
 step0 = step0_repl
 step1 = step1_read_print
@@ -76,6 +76,7 @@ ocaml_STEP_TO_PROG =   ocaml/$($(1))
 matlab_STEP_TO_PROG =  matlab/$($(1)).m
 miniMAL_STEP_TO_PROG = miniMAL/$($(1)).json
 nim_STEP_TO_PROG =     nim/$($(1))
+nim2_STEP_TO_PROG =   nim2/$($(1))
 perl_STEP_TO_PROG =    perl/$($(1)).pl
 php_STEP_TO_PROG =     php/$($(1)).php
 ps_STEP_TO_PROG =      ps/$($(1)).ps
@@ -120,6 +121,7 @@ matlab_args =     $(subst $(SPACE),$(COMMA),$(foreach x,$(strip $(1)),'$(x)'))
 matlab_RUNSTEP =  matlab -nodisplay -nosplash -nodesktop -nojvm -r "$($(1))($(call matlab_args,$(3)));quit;"
 miniMAL_RUNSTEP = miniMAL ../$(2) $(3)
 nim_RUNSTEP =     ../$(2) $(3)
+nim2_RUNSTEP =   ../$(2) $(3)
 perl_RUNSTEP =    perl ../$(2) $(3)
 php_RUNSTEP =     php ../$(2) $(3)
 ps_RUNSTEP =      $(4)gs -q -I./ -dNODISPLAY -- ../$(2) $(3)$(4)
@@ -158,8 +160,12 @@ IMPL_PERF = $(filter-out $(EXCLUDE_PERFS),$(foreach impl,$(DO_IMPLS),perf^$(impl
 # Build rules
 #
 
-# Build a program in an implementation directory
-$(foreach i,$(DO_IMPLS),$(foreach s,$(STEPS),$(call $(i)_STEP_TO_PROG,$(s)))):
+# Build a program in 'c' directory
+c/%:
+	$(MAKE) -C $(dir $(@)) $(notdir $(@))
+
+# Build a program in 'cpp' directory
+cpp/%:
 	$(MAKE) -C $(dir $(@)) $(notdir $(@))
 
 # Allow test, test^STEP, test^IMPL, and test^IMPL^STEP
