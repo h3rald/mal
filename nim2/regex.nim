@@ -12,15 +12,14 @@ type
 
 const
   REGEX_MACROS = [
-    ["\\d", "[0-9]"],
-    ["\\D", "[^0-9]"],
-    ["\\s", "[ \9-\13]"],
-    ["\\S", "[^ \9-\13]"],
-    ["\\w", "[a-zA-Z0-9_]"],
-    ["\\W", "[^a-zA-Z0-9_]"],
-    ["\\a", "[a-zA-Z]"],
-    ["\\A", "[^a-zA-Z]"],
-    ["\\n", "(\10|\13|\13\10)"]
+    ["\\d", "0-9"],
+    ["\\D", "^0-9"],
+    ["\\s", " \9-\13"],
+    ["\\S", "^ \9-\13"],
+    ["\\w", "a-zA-Z0-9_"],
+    ["\\W", "^a-zA-Z0-9_"],
+    ["\\a", "a-zA-Z"],
+    ["\\A", "^a-zA-Z"],
   ]
 
 proc re*(s: string): Regex =
@@ -71,7 +70,6 @@ proc match*(str: string, pattern: Regex, start = 0): bool =
 proc match*(str: string, pattern: Regex, matches: var openArray[string], start = 0): bool = 
   let s = prepareString(str, pattern, start)
   let res = re_match(pattern.data, s)
-  var mEnd = 0
   if pattern.data.nmatches >= 2:
     var rMatches: cstringArray = pattern.data.matches
     var rMatch: string
@@ -111,10 +109,13 @@ when isMainModule:
       var
         matches: array[0..1, string]
         res: bool
-      res = "192.168.1.1".match(re"({\d+}).({\d+})", matches)
+      res = "192.168.1.1".match(re"({[\d]+})\.({[\d]+})", matches)
       check:
         res == true
         matches == ["192", "168"]
       check:
-        "   This is a test".match(re"^\s+This")
-        "\nThis is a test".match(re"^\n+This")
+        "   This is a test".match(re"^[\s]+This")
+      res = "1 2 3 4".match(re"^({[\d]+})", matches)
+      check:
+        res == true
+        matches == ["1", "168"]

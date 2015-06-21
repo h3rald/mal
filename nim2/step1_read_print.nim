@@ -1,19 +1,29 @@
 import 
   readline,
-  regex
+  regex,
+  types,
+  reader,
+  printer
 
 const
   PROMPT = "user> "
 
-proc read(prompt = PROMPT): string =
-  result = readline(prompt)
-  historyAdd(result)
+var 
+  r: Reader
+  p: Printer
 
-proc print(s: string) =
-  echo s
+proc read(prompt = PROMPT): Node =
+  var line = readline(prompt)
+  historyAdd(line)
+  r = line.readStr()
+  return r.readForm()
 
-proc eval(s: string): string = 
-  return s
+proc print(n: Node) =
+  p.printStr(n)
+
+
+proc eval(n: Node): Node = 
+  return n
 
 proc rep() = 
   print(eval(read()))

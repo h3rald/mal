@@ -1,5 +1,4 @@
 {.compile: "vendor/liblwre.c".}
-{.push importc.}
 type 
   RE_Insn* = object 
   
@@ -29,9 +28,11 @@ const
   RE_ERROR_SUBMATCH* = - 5
   RE_ERROR_ENGINE* = - 6
 
+{.push importc.}
 proc re_new*(expression: cstring): PRE
 proc re_match*(re: PRE; input: cstring): cint
 proc re_release*(re: PRE)
 proc re_reset*(re: PRE; expression: cstring)
 proc re_free*(re: PRE)
 proc re_escape*(string: cstring; liberal: cint): cstring
+{.pop.}
