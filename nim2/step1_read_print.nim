@@ -1,5 +1,6 @@
 import 
-  readline
+  readline,
+  regex
 
 const
   PROMPT = "user> "
