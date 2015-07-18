@@ -19,7 +19,7 @@ proc read(prompt = PROMPT): Node =
   return r.readForm()
 
 proc print(n: Node) =
-  p.printStr(n)
+  echo p.prStr(n)
 
 
 proc eval(n: Node): Node = 

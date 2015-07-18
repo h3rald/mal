@@ -1,20 +1,27 @@
 import
-  types
+  types,
+  strutils
 
-proc printStr*(p: Printer, form: Node) =
+proc prStr*(p: Printer, form: Node, printReadably = true): string =
+  result = ""
   case form.kind:
     of nList:
-      stdout.write "("
+      result &= "("
       var count = 0
       for i in form.listVal:
         count.inc
-        p.printStr(i)
+        result &= p.prStr(i)
         if count < form.listVal.len:
-          stdout.write " "
-      stdout.write ")"
+          result &= " "
+      result &= ")"
     of nInt:
-      stdout.write form.intVal
+      result = $form.intVal
+    of nString:
+      if printReadably:
+        result = form.stringVal.replace("\n", "\\n").replace("\"", "\\\"")
+      else:
+        result = form.stringVal
     of nSymbol:
-      stdout.write form.symbolVal
+      result = form.symbolVal
     of nAtom:
-      stdout.write form.atomVal
+      result = form.atomVal
