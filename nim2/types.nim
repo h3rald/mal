@@ -9,7 +9,8 @@ type
     nSymbol,
     nString,
     nInt,
-    nKeyword
+    nKeyword,
+    nVector
   Node* = object
     case kind*: NodeKind
     of nList:   listVal*:   seq[Node]
@@ -18,6 +19,7 @@ type
     of nInt:    intVal*:    int
     of nAtom:   atomVal*: string
     of nKeyword: keyVal*: string
+    of nVector: vectorVal*: seq[Node]
   ParsingError* = object of Exception
 
 proc `position=`*(r: var Reader, value: int) {.inline.} =

@@ -14,10 +14,19 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
         if count < form.listVal.len:
           result &= " "
       result &= ")"
+    of nVector:
+      result &= "["
+      var count = 0
+      for i in form.vectorVal:
+        count.inc
+        result &= p.prStr(i)
+        if count < form.vectorVal.len:
+          result &= " "
+      result &= "]"
     of nInt:
       result = $form.intVal
     of nKeyword:
-      result = ":" & form.keyVal
+      result = ":$1" % [form.keyVal]
     of nString:
       if printReadably:
         result = form.stringVal.replace("\n", "\\n").replace("\"", "\\\"")

@@ -14,10 +14,12 @@ let
 
 const
   UNMATCHED_PAREN = "expected ')', got EOF"
+  UNMATCHED_BRACKET = "expected ']', got EOF"
   UNMATCHED_DOUBLE_QUOTE = "expected '\"', got EOF"
 
 var
   DEBUG = false
+  failure = false
 
 template dbg(x: stmt) = 
   if DEBUG:
@@ -26,6 +28,7 @@ template dbg(x: stmt) =
 proc error(str: string) =
   stderr.write str
   stderr.write "\n"
+  failure = true
 
 proc tokenizer(str: string): seq[string] =
   result = newSeq[string](0)
@@ -105,15 +108,35 @@ proc readList*(r: var Reader): Node =
   result.kind = nList
   result.listVal = list
 
+proc readVector*(r: var Reader): Node = 
+  var vector = newSeq[Node](0)
+  try:
+    discard r.peek()
+  except:
+    error UNMATCHED_BRACKET
+    return
+  while r.peek() != "]":
+    vector.add r.readForm()
+    discard r.next()
+    try:
+      discard r.peek()
+    except:
+      error UNMATCHED_BRACKET
+      return
+  result.kind = nVector
+  result.vectorVal = vector
+
 proc readForm*(r: var Reader): Node =
+  if failure:
+    failure = false
+    return
   case r.peek():
+    of "[":
+      discard r.next() 
+      result = r.readVector()
     of "(":
       discard r.next() 
       result = r.readList()
-    #of "\"":
-    #  echo "test"
-    #  discard r.next() 
-    #  result = r.readString()
     of "'":
       discard r.next()
       result = newNlist(@[newNsymbol("quote"), r.readForm()])
