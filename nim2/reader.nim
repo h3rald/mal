@@ -9,11 +9,19 @@ let
   REGEX_INT     = re"""^[\d]+$"""
   REGEX_SYMBOL  = re"""^[\w]+$"""
   REGEX_STRING  = re"""^".*"$"""
+  REGEX_KEYWORD  = re"""^:[\w]+$"""
 
 
 const
   UNMATCHED_PAREN = "expected ')', got EOF"
   UNMATCHED_DOUBLE_QUOTE = "expected '\"', got EOF"
+
+var
+  DEBUG = false
+
+template dbg(x: stmt) = 
+  if DEBUG:
+    x
 
 proc error(str: string) =
   stderr.write str
@@ -26,17 +34,20 @@ proc tokenizer(str: string): seq[string] =
     s = str
     token: string
   while s != "" and s.match(REGEX_TOKEN, matches) and matches[0] != nil and matches[0] != "":
-    #echo "--- matches ---"
-    #for m in matches:
-    #  echo "->", m, "<-"
-    #echo "---------------"
+    dbg:
+      echo "--- matches ---"
+      for m in matches:
+        echo "->", m, "<-"
+      echo  "---------------"
     token = matches[0]
-    #echo "Token: ->", token, "<-"
+    dbg:
+      echo "Token: ->", token, "<-"
     result.add(token)
-    #echo s.find(token)
-    #echo token.len
+    dbg: 
+      echo s.find(token)
+      echo token.len
     s = s.substr(s.find(token) + token.len, s.len-1)
-    #echo "->", s, "<-"
+    dbg: echo "->", s, "<-"
     matches[0] = nil
   if token.len == 0:
     error UNMATCHED_DOUBLE_QUOTE
@@ -54,7 +65,10 @@ proc next*(r: var Reader): string =
 
 proc readAtom*(r: var Reader): Node =
   let token = r.peek()
-  if token.match(REGEX_STRING):
+  if token.match(REGEX_KEYWORD):
+    result.kind = nKeyword
+    result.keyVal = token.substr(1, token.len-1)
+  elif token.match(REGEX_STRING):
     result.kind = nString
     result.stringVal = token.substr(1, token.len-2).replace("\\\"", "\"").replace("\\n", "\n")
   elif token.match(REGEX_INT):
@@ -114,4 +128,3 @@ proc readForm*(r: var Reader): Node =
       result = newNlist(@[newNsymbol("splice-unquote"), r.readForm()])
     else:
       result = r.readAtom()
-

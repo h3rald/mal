@@ -16,11 +16,14 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result &= ")"
     of nInt:
       result = $form.intVal
+    of nKeyword:
+      result = ":" & form.keyVal
     of nString:
       if printReadably:
         result = form.stringVal.replace("\n", "\\n").replace("\"", "\\\"")
       else:
         result = form.stringVal
+      result = "\"$1\"" % [result]
     of nSymbol:
       result = form.symbolVal
     of nAtom:
