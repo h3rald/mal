@@ -1,6 +1,7 @@
 import
   types,
-  strutils
+  strutils,
+  tables
 
 proc prStr*(p: Printer, form: Node, printReadably = true): string =
   result = ""
@@ -14,6 +15,22 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
         if count < form.listVal.len:
           result &= " "
       result &= ")"
+    of nHashMap:
+      result &= "{"
+      var count = 0
+      for key, value in form.hashVal.pairs:
+        var n: Node
+        if key.kindName == "string":
+          n = newNstring(key.key)
+        else:
+          n = newNkeyword(key.key)
+        count.inc
+        result &= p.prStr(n)
+        result &= " "
+        result &= p.prStr(value)
+        if count < form.hashVal.len:
+          result &= " "
+      result &= "}"
     of nVector:
       result &= "["
       var count = 0

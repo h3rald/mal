@@ -1,7 +1,9 @@
 import
   regex,
   types,
-  strutils
+  strutils,
+  printer,
+  tables
 
 let
   # Original PCRE:  """[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"""
@@ -15,7 +17,9 @@ let
 const
   UNMATCHED_PAREN = "expected ')', got EOF"
   UNMATCHED_BRACKET = "expected ']', got EOF"
+  UNMATCHED_BRACE = "expected '}', got EOF"
   UNMATCHED_DOUBLE_QUOTE = "expected '\"', got EOF"
+  INVALID_HASHMAP_KEY = "invalid hashmap key"
 
 var
   DEBUG = false
@@ -71,24 +75,25 @@ proc readAtom*(r: var Reader): Node =
   if token.match(REGEX_KEYWORD):
     result.kind = nKeyword
     result.keyVal = token.substr(1, token.len-1)
+    result.kindName = "keyword"
   elif token.match(REGEX_STRING):
     result.kind = nString
     result.stringVal = token.substr(1, token.len-2).replace("\\\"", "\"").replace("\\n", "\n")
+    result.kindName = "string"
   elif token.match(REGEX_INT):
     result.kind = nInt
     result.intVal = token.parseInt
+    result.kindName = "int"
   elif token.match(REGEX_SYMBOL):
     result.kind = nSymbol
     result.symbolVal = token
+    result.kindName = "symbol"
   else:
     result.kind = nAtom
     result.atomVal = token
+    result.kindName = "atom"
 
 proc readForm*(r: var Reader): Node
-
-proc readString*(r: var Reader): Node =
-  let atom = r.readAtom().atomVal
-
 
 proc readList*(r: var Reader): Node = 
   var list = newSeq[Node](0)
@@ -105,8 +110,7 @@ proc readList*(r: var Reader): Node =
     except:
       error UNMATCHED_PAREN
       return
-  result.kind = nList
-  result.listVal = list
+  return newNlist(list)
 
 proc readVector*(r: var Reader): Node = 
   var vector = newSeq[Node](0)
@@ -123,14 +127,48 @@ proc readVector*(r: var Reader): Node =
     except:
       error UNMATCHED_BRACKET
       return
-  result.kind = nVector
-  result.vectorVal = vector
+  return newNvector(vector)
+
+proc readHashMap*(r: var Reader): Node = 
+  var p: Printer
+  var hash = initTable[HashKey, Node]()
+  try:
+    discard r.peek()
+  except:
+    error UNMATCHED_BRACE
+    return
+  var key: Node
+  while r.peek() != "}":
+    key = r.readAtom()
+    discard r.next()
+    var success = false
+    if key.kind == nString or key.kind == nKeyword:
+      var hashkey: HashKey
+      hashkey.kindName = key.kindName
+      if key.kind == nString:
+        hashkey.key = key.stringVal
+      else:
+        hashkey.key = key.keyVal
+      hash[hashkey] = r.readForm()
+      discard r.next()
+      try:
+        discard r.peek()
+      except:
+        error UNMATCHED_BRACE
+        return
+    else:
+      error INVALID_HASHMAP_KEY & " (got: $value -- $type)" % ["value", p.prStr(key), "type", key.kindName]
+      return
+  return newNhashMap(hash)
 
 proc readForm*(r: var Reader): Node =
   if failure:
     failure = false
     return
   case r.peek():
+    of "{":
+      discard r.next() 
+      result = r.readHashMap()
     of "[":
       discard r.next() 
       result = r.readVector()

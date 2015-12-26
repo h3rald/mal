@@ -225,8 +225,8 @@ while t.next():
     expected = ["%s%s%s%s" % (t.form, sep, t.out, t.ret),
                 "%s%s%s%s%s%s" % (t.form, sep, t.form, sep, t.out, t.ret)]
 
+    r.writeline(t.form)
     try:
-        r.writeline(t.form)
         res = r.read_to_prompt(['\r\nuser> ', '\nuser> ',
                                 '\r\nmal-user> ', '\nmal-user> '],
                                 timeout=args.test_timeout)
