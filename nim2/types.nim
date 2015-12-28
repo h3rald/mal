@@ -13,13 +13,18 @@ type
     nInt,
     nKeyword,
     nVector,
-    nHashMap
+    nHashMap,
+    nFun
   HashKey* = object
     kindName*: string
     key*: string
+  Fun = proc(ns: varargs[Node]):Node
+  NodeHash* = Table[HashKey, Node]
   Node* = object
     kindName*: string
     case kind*: NodeKind
+    of nFun:
+      funVal*: Fun
     of nList:   
       listVal*:   seq[Node]
     of nSymbol: 
@@ -35,7 +40,7 @@ type
     of nVector: 
       vectorVal*: seq[Node]
     of nHashMap: 
-      hashVal*: Table[HashKey, Node]
+      hashVal*: NodeHash
   ParsingError* = object of Exception
 
 proc `position=`*(r: var Reader, value: int) {.inline.} =
@@ -59,6 +64,11 @@ proc newNsymbol*(s: string): Node =
   result.kindName = "symbol"
   result.symbolVal = s
 
+proc newNint*(i: int): Node =
+  result.kind = nInt
+  result.kindName = "int"
+  result.intVal = i
+
 proc newNhashMap*(h: Table[HashKey, Node]): Node =
   result.kind = nHashMap
   result.kindName = "hashmap"
@@ -73,3 +83,12 @@ proc newNkeyword*(s: string): Node =
   result.kind = nKeyword
   result.kindName = "keyword"
   result.keyVal = s
+
+proc newNfun*(f: Fun): Node = 
+  result.kind = nFun
+  result.kindName = "function"
+  result.funVal = f
+
+proc symKey*(key): HashKey = 
+  result.kindname = "symbol"
+  result.key = key

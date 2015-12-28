@@ -25,11 +25,11 @@ var
   DEBUG = false
   failure = false
 
-template dbg(x: stmt) = 
+template dbg*(x: stmt) = 
   if DEBUG:
     x
 
-proc error(str: string) =
+proc error*(str: string) =
   stderr.write str
   stderr.write "\n"
   failure = true
@@ -41,20 +41,9 @@ proc tokenizer(str: string): seq[string] =
     s = str
     token: string
   while s != "" and s.match(REGEX_TOKEN, matches) and matches[0] != nil and matches[0] != "":
-    dbg:
-      echo "--- matches ---"
-      for m in matches:
-        echo "->", m, "<-"
-      echo  "---------------"
     token = matches[0]
-    dbg:
-      echo "Token: ->", token, "<-"
     result.add(token)
-    dbg: 
-      echo s.find(token)
-      echo token.len
     s = s.substr(s.find(token) + token.len, s.len-1)
-    dbg: echo "->", s, "<-"
     matches[0] = nil
   if token.len == 0:
     error UNMATCHED_DOUBLE_QUOTE
@@ -84,14 +73,15 @@ proc readAtom*(r: var Reader): Node =
     result.kind = nInt
     result.intVal = token.parseInt
     result.kindName = "int"
-  elif token.match(REGEX_SYMBOL):
+  #elif token.match(REGEX_SYMBOL):
+  else:
     result.kind = nSymbol
     result.symbolVal = token
     result.kindName = "symbol"
-  else:
-    result.kind = nAtom
-    result.atomVal = token
-    result.kindName = "atom"
+  #else:
+  #  result.kind = nAtom
+  #  result.atomVal = token
+  #  result.kindName = "atom"
 
 proc readForm*(r: var Reader): Node
 

@@ -54,3 +54,5 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result = form.symbolVal
     of nAtom:
       result = form.atomVal
+    of nFun:
+      result = "<function>"
