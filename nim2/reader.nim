@@ -162,6 +162,7 @@ proc readHashMap*(r: var Reader): Node =
   return newNhashMap(hash)
 
 proc readForm*(r: var Reader): Node =
+  var p: Printer
   if failure:
     failure = false
     return
@@ -187,5 +188,22 @@ proc readForm*(r: var Reader): Node =
     of "~@":
       discard r.next()
       result = newNlist(@[newNsymbol("splice-unquote"), r.readForm()])
+    of "@":
+      discard r.next()
+      let sym = r.readForm();
+      #if sym.kind != nSymbol:
+      #  error "Cannot derefence $1: $2" % [sym.kindName, p.prStr(sym)]
+      #  return
+      result = newNList(@[newNsymbol("deref"), sym])
+    of "^":
+      discard r.next()
+      if r.peek() == "{":
+        discard r.next()
+        let h = r.readHashMap()
+        discard r.next()
+        let v = r.readForm()
+        result = newNList(@[newNsymbol("with-meta"), v, h])
+      else:
+        error "A HashMap is required by the with-meta macro"
     else:
       result = r.readAtom()
