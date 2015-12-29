@@ -100,7 +100,7 @@ proc readList*(r: var Reader): Node =
     except:
       error UNMATCHED_PAREN
       return
-  return newNlist(list)
+  return newList(list)
 
 proc readVector*(r: var Reader): Node = 
   var vector = newSeq[Node](0)
@@ -117,11 +117,11 @@ proc readVector*(r: var Reader): Node =
     except:
       error UNMATCHED_BRACKET
       return
-  return newNvector(vector)
+  return newvector(vector)
 
 proc readHashMap*(r: var Reader): Node = 
   var p: Printer
-  var hash = initTable[HashKey, Node]()
+  var hash = initTable[string, Node]()
   try:
     discard r.peek()
   except:
@@ -133,13 +133,12 @@ proc readHashMap*(r: var Reader): Node =
     discard r.next()
     var success = false
     if key.kind == nString or key.kind == nKeyword:
-      var hashkey: HashKey
-      hashkey.kindName = key.kindName
+      var hashkey:string = key.kindName[0..2] & ":"
       if key.kind == nString:
-        hashkey.key = key.stringVal
+        hashkey &= key.stringVal
       else:
-        hashkey.key = key.keyVal
-      hash[hashkey] = r.readForm()
+        hashkey &= key.keyVal
+      hash.add(hashkey, r.readForm())
       discard r.next()
       try:
         discard r.peek()
@@ -149,7 +148,7 @@ proc readHashMap*(r: var Reader): Node =
     else:
       error INVALID_HASHMAP_KEY & " (got: $value -- $type)" % ["value", p.prStr(key), "type", key.kindName]
       return
-  return newNhashMap(hash)
+  return newhashMap(hash)
 
 proc readForm*(r: var Reader): Node =
   var p: Printer
@@ -168,23 +167,23 @@ proc readForm*(r: var Reader): Node =
       result = r.readList()
     of "'":
       discard r.next()
-      result = newNlist(@[newNsymbol("quote"), r.readForm()])
+      result = newList(@[newSymbol("quote"), r.readForm()])
     of "`":
       discard r.next()
-      result = newNlist(@[newNsymbol("quasiquote"), r.readForm()])
+      result = newList(@[newSymbol("quasiquote"), r.readForm()])
     of "~":
       discard r.next()
-      result = newNlist(@[newNsymbol("unquote"), r.readForm()])
+      result = newList(@[newSymbol("unquote"), r.readForm()])
     of "~@":
       discard r.next()
-      result = newNlist(@[newNsymbol("splice-unquote"), r.readForm()])
+      result = newList(@[newSymbol("splice-unquote"), r.readForm()])
     of "@":
       discard r.next()
       let sym = r.readForm();
       #if sym.kind != nSymbol:
       #  error "Cannot derefence $1: $2" % [sym.kindName, p.prStr(sym)]
       #  return
-      result = newNList(@[newNsymbol("deref"), sym])
+      result = newList(@[newSymbol("deref"), sym])
     of "^":
       discard r.next()
       if r.peek() == "{":
@@ -192,7 +191,7 @@ proc readForm*(r: var Reader): Node =
         let h = r.readHashMap()
         discard r.next()
         let v = r.readForm()
-        result = newNList(@[newNsymbol("with-meta"), v, h])
+        result = newList(@[newSymbol("with-meta"), v, h])
       else:
         error "A HashMap is required by the with-meta macro"
     else:

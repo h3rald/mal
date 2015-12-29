@@ -20,10 +20,10 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       var count = 0
       for key, value in form.hashVal.pairs:
         var n: Node
-        if key.kindName == "string":
-          n = newNstring(key.key)
+        if key[0..3] == "str:":
+          n = newString(key[4..key.len-1])
         else:
-          n = newNkeyword(key.key)
+          n = newKeyword(key[4..key.len-1])
         count.inc
         result &= p.prStr(n)
         result &= " "
@@ -54,5 +54,5 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result = form.symbolVal
     of nAtom:
       result = form.atomVal
-    of nFun:
+    of nProc:
       result = "<function>"

@@ -30,30 +30,29 @@ proc eval_ast(ast: Node, env: NodeHash): Node =
   var p:Printer
   case ast.kind:
     of nSymbol:
-      var hashkey: HashKey
-      hashkey.kindName = "symbol"
-      hashkey.key = ast.symbolVal
+      var hashkey: string
+      hashkey = "sym:" & ast.symbolVal
       dbg:
-        echo "EVAL_AST: symbol: " & hashkey.key
+        echo "EVAL_AST: symbol: " & ast.symbolVal
       if env.hasKey(hashKey):
         return env[hashkey]
       else:
-        error "Symbol '$1' not found" % [hashkey.key]
+        error "Symbol '$1' not found" % [ast.symbolVal]
     of nList:
       dbg:
         echo "EVAL_AST: list"
-      return newNList(map(ast.listVal, proc(n: Node): Node = return eval(n, env)))
+      return newList(map(ast.listVal, proc(n: Node): Node = return eval(n, env)))
     of nVector:
       dbg:
         echo "EVAL_AST: vector"
-      return newNVector(map(ast.vectorVal, proc(n: Node): Node = return eval(n, env)))
+      return newVector(map(ast.vectorVal, proc(n: Node): Node = return eval(n, env)))
     of nHashMap:
       dbg:
         echo "EVAL_AST: hashmap"
-      var hash = initTable[HashKey, Node]()
+      var hash = initTable[string, Node]()
       for k, v in ast.hashVal.pairs:
         hash[k] = eval(v, env)
-      return newNhashMap(hash)
+      return newHashMap(hash)
     else:
       dbg:
         echo "EVAL_AST: literal: " & p.prStr(ast)
@@ -62,7 +61,7 @@ proc eval_ast(ast: Node, env: NodeHash): Node =
 proc apply(list: Node): Node =
   let f = list.listVal[0]
   let args = list.listVal[1 .. list.listVal.len-1]
-  return f.funVal(args)
+  return f.procVal(args)
 
 
 proc eval(ast: Node, env: NodeHash): Node = 
@@ -70,7 +69,7 @@ proc eval(ast: Node, env: NodeHash): Node =
     return eval_ast(ast, env)
   else:
     var list = eval_ast(ast, env)
-    if (list.listVal[0].kind == nFun):
+    if (list.listVal[0].kind == nProc):
       return apply(list)
     else:
       return list
@@ -80,15 +79,13 @@ proc rep(env: NodeHash) =
 
 ##########
 
-var repl_env = initTable[HashKey, Node]()
+var repl_env = initTable[string, Node]()
 
-repl_env.add(symKey("+"), newNfun(proc(ns: varargs[Node]): Node = return newNint(ns[0].intVal + ns[1].intVal)))
-repl_env.add(symKey("-"), newNfun(proc(ns: varargs[Node]): Node = return newNint(ns[0].intVal - ns[1].intVal)))
-repl_env.add(symKey("*"), newNfun(proc(ns: varargs[Node]): Node = return newNint(ns[0].intVal * ns[1].intVal)))
-repl_env.add(symKey("/"), newNfun(proc(ns: varargs[Node]): Node = return newNint(int(ns[0].intVal / ns[1].intVal))))
+repl_env.add("sym:+", newProc(proc(ns: varargs[Node]): Node = return newInt(ns[0].intVal + ns[1].intVal)))
+repl_env.add("sym:-", newProc(proc(ns: varargs[Node]): Node = return newInt(ns[0].intVal - ns[1].intVal)))
+repl_env.add("sym:*", newProc(proc(ns: varargs[Node]): Node = return newInt(ns[0].intVal * ns[1].intVal)))
+repl_env.add("sym:/", newProc(proc(ns: varargs[Node]): Node = return newInt(int(ns[0].intVal / ns[1].intVal))))
 
 
 while true:
   rep(repl_env)
-
-
