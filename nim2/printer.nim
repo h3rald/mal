@@ -43,7 +43,7 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
     of nInt:
       result = $form.intVal
     of nKeyword:
-      result = ":$1" % [form.keyVal]
+      result = "$1" % [form.keyVal]
     of nString:
       if printReadably:
         result = form.stringVal.replace("\n", "\\n").replace("\"", "\\\"")
@@ -55,4 +55,6 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
     of nAtom:
       result = form.atomVal
     of nProc:
-      result = "<function>"
+      result = "<procedure>"
+    of nSpecProc:
+      result = "<special procedure>"

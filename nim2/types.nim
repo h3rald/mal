@@ -14,17 +14,16 @@ type
     nKeyword,
     nVector,
     nHashMap,
-    nProc
-  Proc = proc(ns: varargs[Node]):Node
+    nProc, 
+    nSpecProc
   NodeHash* = Table[string, Node]
-  #Env* = object
-  #  outer*: Env
-  #  data*: NodeHash
   Node* = object
     kindName*: string
     case kind*: NodeKind
     of nProc:
-      procVal*: Proc
+      procVal*: NodeProc
+    of nSpecProc:
+      specProcVal*: NodeSpecProc
     of nList:   
       listVal*:   seq[Node]
     of nSymbol: 
@@ -41,17 +40,31 @@ type
       vectorVal*: seq[Node]
     of nHashMap: 
       hashVal*: NodeHash
+  NodeArgs* = varargs[Node]
+  NodeProc* = proc(args: NodeArgs): Node
+  NodeSpecProc* = proc(args: NodeArgs, env: Env): Node
+  Env* = ref EnvObj
+  EnvObj* = object
+    name*: string
+    outer*: Env
+    data*: NodeHash
   ParsingError* = object of Exception
+
+var
+  DEBUG* = false
+  failure* = false
+
+template dbg*(x: stmt) = 
+  if DEBUG:
+    x
+
+proc error*(str: string) =
+  stderr.write str
+  stderr.write "\n"
+  failure = true
 
 proc `position=`*(r: var Reader, value: int) {.inline.} =
   r.pos = value
-
-#proc newEnv*(outer: Env): Env =
-#  result.outer = outer
-#  result.data = initTable[HashKey, Node]()
-
-#proc newEnv*(): Env =
-#  result.data = initTable[HashKey, Node]()
 
 proc newList*(nseq: seq[Node]): Node =
   result.kind = nList
@@ -91,11 +104,15 @@ proc newKeyword*(s: string): Node =
   result.kindName = "keyword"
   result.keyVal = s
 
-proc newProc*(f: Proc): Node = 
+proc newProc*(f: NodeProc): Node = 
   result.kind = nProc
   result.kindName = "procedure"
   result.procVal = f
 
+proc newSpecProc*(f: NodeSpecProc): Node = 
+  result.kind = nSpecProc
+  result.kindName = "special procedure"
+  result.specProcVal = f
 
 ### Helper procs
 
@@ -110,3 +127,4 @@ proc code2kind(s: string): string =
       return "string"
     else:
       return "unknown"
+

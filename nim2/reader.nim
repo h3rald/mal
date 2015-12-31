@@ -21,19 +21,6 @@ const
   UNMATCHED_DOUBLE_QUOTE = "expected '\"', got EOF"
   INVALID_HASHMAP_KEY = "invalid hashmap key"
 
-var
-  DEBUG = false
-  failure = false
-
-template dbg*(x: stmt) = 
-  if DEBUG:
-    x
-
-proc error*(str: string) =
-  stderr.write str
-  stderr.write "\n"
-  failure = true
-
 proc tokenizer(str: string): seq[string] =
   result = newSeq[string](0)
   var 
