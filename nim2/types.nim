@@ -15,7 +15,8 @@ type
     nVector,
     nHashMap,
     nProc, 
-    nSpecProc
+    nSpecProc,
+    nBool
   NodeHash* = Table[string, Node]
   Node* = object
     kindName*: string
@@ -40,6 +41,8 @@ type
       vectorVal*: seq[Node]
     of nHashMap: 
       hashVal*: NodeHash
+    of nBool:
+      boolVal*: bool
   NodeArgs* = varargs[Node]
   NodeProc* = proc(args: NodeArgs): Node
   NodeSpecProc* = proc(args: NodeArgs, env: Env): Node
@@ -59,6 +62,7 @@ template dbg*(x: stmt) =
     x
 
 proc error*(str: string) =
+  stderr.write "ERROR - "
   stderr.write str
   stderr.write "\n"
   failure = true
@@ -71,6 +75,11 @@ proc newList*(nseq: seq[Node]): Node =
   result.kindName = "list"
   result.listVal = nseq
 
+proc newNil*(): Node = 
+  result.kind = nList
+  result.kindName = "list"
+  result.listVal = @[]
+
 proc newVector*(nseq: seq[Node]): Node =
   result.kind = nVector
   result.kindName = "vector"
@@ -80,6 +89,11 @@ proc newSymbol*(s: string): Node =
   result.kind = nSymbol
   result.kindName = "symbol"
   result.symbolVal = s
+
+proc newBool*(s: bool): Node =
+  result.kind = nBool
+  result.kindName = "boolean"
+  result.boolVal = s
 
 proc newInt*(i: int): Node =
   result.kind = nInt

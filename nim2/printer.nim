@@ -42,6 +42,11 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result &= "]"
     of nInt:
       result = $form.intVal
+    of nBool:
+      if form.boolVal: 
+        result = "#t" 
+      else: 
+        result = "#f"
     of nKeyword:
       result = "$1" % [form.keyVal]
     of nString:
@@ -55,6 +60,6 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
     of nAtom:
       result = form.atomVal
     of nProc:
-      result = "<procedure>"
+      result = "#<function>"
     of nSpecProc:
-      result = "<special procedure>"
+      result = "#<special-function>"
