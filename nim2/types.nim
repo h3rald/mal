@@ -148,6 +148,10 @@ proc kindName*(n: Node): string =
 
 proc `==`*(a, b: Node): bool =
   if a.kind != b.kind:
+    if a.kind == nList and b.kind == nVector:
+      return a.listVal == b.vectorVal
+    if b.kind == nList and a.kind == nVector:
+      return b.listVal == a.vectorVal
     return false
   case a.kind:
     of nList:

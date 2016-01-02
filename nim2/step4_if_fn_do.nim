@@ -114,6 +114,9 @@ proc rep(env: Env) =
   print(eval(read(), env))
 
 
+proc defnative*(s: string) =
+  var r: Reader = readStr(s)
+  discard eval(r.readForm(), MAINENV)
 
 #### SPECIAL FORMS ####
 
@@ -192,6 +195,11 @@ defspecfun "fn*", args, env:
   return newProc(closure)
   
 defalias "lambda", "fn*"
+
+### Define symbols natively
+
+defnative "(def! not (fn* (a) (if a false true)))"
+
 
 ### Parse Options
 

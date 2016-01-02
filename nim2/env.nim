@@ -1,6 +1,7 @@
 import 
   tables,
-  strutils
+  strutils,
+  sequtils
 
 import 
   types,
@@ -10,13 +11,21 @@ import
 proc set*(env: Env, sym: string, n: Node)
 
 proc newEnv(binds, exprs: seq[Node]): Env =
+  var p:Printer
   new(result)
   result.data = initTable[string, Node]()
   result.name = "closure"
   dbg:
     echo "binds($1) -> exprs($2)" % [$binds.len, $exprs.len]
-  for i in 0..binds.len-1:
-    result.set(binds[i].symbolVal, exprs[i]) # TODO check if right... should expr be evaluated?
+  for i in 0..max(binds.len-1, exprs.len-1):
+    if binds[i].symbolVal == "&": # Clojure-style variadic operator
+      if exprs.len == 0:
+        result.set(binds[i+1].symbolVal, newList(newSeq[Node]()))
+      else:
+        result.set(binds[i+1].symbolVal, newList(exprs[i .. exprs.len-1]))
+      break
+    else:
+      result.set(binds[i].symbolVal, exprs[i])
 
 proc newEnv*(name: string): Env =
   result = newEnv(newSeq[Node](), newSeq[Node]())
@@ -127,16 +136,27 @@ defun "list?", args:
     return newBool(false)
 
 defun "empty?", args:
-  if args[0].listVal.len == 0:
-    return newBool(true)
+  case args[0].kind
+  of nList:
+    if args[0].listVal.len == 0:
+      return newBool(true)
+  of nVector:
+    if args[0].vectorVal.len == 0:
+      return newBool(true)
   else:
-    return newBool(false)
+    error "empty?: First argument is not a list or vector"
+  return newBool(false)
 
 defun "count", args:
-  if args[0].kind == nNil:
+  case args[0].kind:
+  of nNil:
     return newInt(0)
-  else:
+  of nList:
     return newInt(args[0].listVal.len)
+  of nVector:
+    return newInt(args[0].vectorVal.len)
+  else:
+    error "count: First argument is not a list or vector"
 
 defun "=", args:
   return newBool(args[0] == args[1])
@@ -160,6 +180,22 @@ defun "debug", args:
   else:
     DEBUG = true
     return newBool(true)
+
+### String Functions
+
+defun "pr-str", args:
+  return newString(args.map(proc(n: Node): string = return $n).join(" "))
+
+defun "str", args:
+  return newString(args.map(proc(n: Node): string = return $~n).join())
+
+defun "prn", args:
+  echo args.map(proc(n: Node): string = return $n).join(" ")
+  return newNil()
+
+defun "println", args:
+  echo args.map(proc(n: Node): string = return $~n).join(" ")
+  return newNil()
 
 ### Special Functions
 

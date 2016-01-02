@@ -11,7 +11,7 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       var count = 0
       for i in form.listVal:
         count.inc
-        result &= p.prStr(i)
+        result &= p.prStr(i, printReadably)
         if count < form.listVal.len:
           result &= " "
       result &= ")"
@@ -25,9 +25,9 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
         else:
           n = newKeyword(key[4..key.len-1])
         count.inc
-        result &= p.prStr(n)
+        result &= p.prStr(n, printReadably)
         result &= " "
-        result &= p.prStr(value)
+        result &= p.prStr(value, printReadably)
         if count < form.hashVal.len:
           result &= " "
       result &= "}"
@@ -36,7 +36,7 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       var count = 0
       for i in form.vectorVal:
         count.inc
-        result &= p.prStr(i)
+        result &= p.prStr(i, printReadably)
         if count < form.vectorVal.len:
           result &= " "
       result &= "]"
@@ -48,15 +48,15 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       else: 
         result = "false"
     of nKeyword:
-      result = "$1" % [form.keyVal]
+      result = "$1" % form.keyVal
     of nNil:
       result = "nil"
     of nString:
       if printReadably:
-        result = form.stringVal.replace("\n", "\\n").replace("\"", "\\\"")
+        result = form.stringVal.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"").replace("\r", "\\r")
+        result = "\"$1\"" % result
       else:
         result = form.stringVal
-      result = "\"$1\"" % [result]
     of nSymbol:
       result = form.symbolVal
     of nAtom:
@@ -65,3 +65,11 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result = "#<function>"
     of nSpecProc:
       result = "#<special-function>"
+
+proc `$`*(n: Node): string =
+  var p:Printer
+  return p.prStr(n)
+
+proc `$~`*(n: Node): string =
+  var p:Printer
+  return p.prStr(n, false)
