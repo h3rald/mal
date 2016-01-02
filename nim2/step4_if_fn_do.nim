@@ -3,7 +3,8 @@ import
   sequtils,
   strutils,
   readline,
-  regex
+  regex,
+  parseopt2
 
 import
   types,
@@ -76,6 +77,8 @@ proc eval(ast: Node, env: Env): Node =
     of nList:
       dbg: 
         echo "EVAL: list"
+      if ast.listVal.len == 0:
+        return ast
       let car = ast.listVal[0]
       case car.kind:
       of nProc:
@@ -97,7 +100,7 @@ proc eval(ast: Node, env: Env): Node =
             return applySpec(evalSym, ast, env)
           else:
             dbg:
-              echo "!!!! EVAL: unknown form" # Unlikely...
+              echo "EVAL: unknown form" # Unlikely...
             return eval_ast(ast, env)
       else:
         return eval_ast(ast, env)
@@ -114,14 +117,14 @@ proc rep(env: Env) =
 
 #### SPECIAL FORMS ####
 
-defspec "def!", args, env:
+defspecfun "def!", args, env:
   dbg:
     echo "def!: called"
   var evaluated = eval(args[1], env)
   env.set(args[0].symbolVal, evaluated)
   return evaluated
 
-defspec "let*", args, env:
+defspecfun "let*", args, env:
   var nEnv = newEnv("let*", env)
   var blist: seq[Node]
   case args[0].kind:
@@ -140,22 +143,26 @@ defspec "let*", args, env:
     c.inc(2)
   return eval(args[1], nEnv)
 
-defspec "do", args, env:
+defspecfun "do", args, env:
   for arg in args:
     result = eval(arg, env)
 
-defspec "if", args, env:
+defspecfun "if", args, env:
   var cond = eval(args[0], env)
   var ifTrue = args[1]
   var ifFalse = newNil()
   if args.len > 2:
     ifFalse = args[2]
-  if cond.kind == nList and cond.listVal.len == 0 or cond.kind == nBool and cond.boolVal == false:
+  if cond.falsy:
+    dbg:
+      echo "IF: false"
     return eval(ifFalse, env)
   else:
+    dbg:
+      echo "IF: true"
     return eval(ifTrue, env)
 
-defspec "fn*", args, env:
+defspecfun "fn*", args, env:
   var p:Printer
   var binds: seq[Node]
   case args[0].kind:
@@ -175,7 +182,6 @@ defspec "fn*", args, env:
       echo "fn*: Defining closure"
     var closureEnv = newEnv("closure", env, binds, exprs)
     dbg: 
-      echo "CLOSURE - execution"
       echo "CLOSURE - arguments: "
       for arg in exprs:
         echo p.prStr(arg)
@@ -187,7 +193,20 @@ defspec "fn*", args, env:
   
 defalias "lambda", "fn*"
 
-#### REPL ####
+### Parse Options
+
+for kind, key, val in getopt():
+  case kind:
+    of cmdLongOption, cmdShortOption:
+      case key:
+        of "debug", "d":
+          DEBUG = true
+        else:
+          discard
+    else:
+      discard
+
+### REPL
 
 while true:
   rep(MAINENV)

@@ -72,47 +72,98 @@ proc get*(env: Env, sym: string): Node =
 
 var MAINENV* = newEnv("main")
 
-proc defineSymbol(sym: string, p: NodeProc) =
+proc defineFunction(sym: string, p: NodeProc) =
   MAINENV.set(sym, newProc(p))
 
-proc defineSpecialSymbol(sym: string, p: NodeSpecProc) =
+proc defineSpecialFunction(sym: string, p: NodeSpecProc) =
   MAINENV.set(sym, newSpecProc(p))
+
+proc defconst*(sym: string, n: Node) = 
+  MAINENV.set(sym, n)
 
 proc defalias*(alias, orig: string) =
   MAINENV.copy(orig, alias)
 
-template defsym*(s: string, args: expr, body: stmt): stmt {.immediate.} =
-  defineSymbol(s) do (args: NodeArgs) -> Node:
+template defun*(s: string, args: expr, body: stmt): stmt {.immediate.} =
+  defineFunction(s) do (args: varargs[Node]) -> Node:
     body
 
-template defspec*(s: string, args, env: expr, body: stmt): stmt {.immediate.} =
-  defineSpecialSymbol(s) do (args: NodeArgs, env: Env) -> Node:
+template defspecfun*(s: string, args, env: expr, body: stmt): stmt {.immediate.} =
+  defineSpecialFunction(s) do (args: varargs[Node], env: Env) -> Node:
     body
 
-### Definitions
+### Constants
 
+defconst "true", newBool(true)
 
-defsym "#t", args:
-  return newBool(true)
+defconst "false", newBool(false)
 
-defsym "#f", args:
-  return newBool(false)
+defconst "nil", newNil()
 
-defsym "+", args:
+### Functions
+
+defun "+", args:
   return newInt(args[0].intVal + args[1].intVal)
 
-defsym "-", args:
+defun "-", args:
   return newInt(args[0].intVal - args[1].intVal)
 
-defsym "*", args:
+defun "*", args:
   return newInt(args[0].intVal * args[1].intVal)
 
-defsym "/", args:
+defun "/", args:
   return newInt(int(args[0].intVal / args[1].intVal))
 
-### Special Definitions
+defun "list", args:
+  var list = newSeq[Node]()
+  for a in args:
+    list.add(a)
+  return newList(list)
 
-defspec "print-env", args, env:
+defun "list?", args:
+  if args[0].kind == nList:
+    return newBool(true)
+  else:
+    return newBool(false)
+
+defun "empty?", args:
+  if args[0].listVal.len == 0:
+    return newBool(true)
+  else:
+    return newBool(false)
+
+defun "count", args:
+  if args[0].kind == nNil:
+    return newInt(0)
+  else:
+    return newInt(args[0].listVal.len)
+
+defun "=", args:
+  return newBool(args[0] == args[1])
+
+defun "<", args:
+  return newBool(args[0].intVal < args[1].intVal)
+
+defun "<=", args:
+  return newBool(args[0].intVal <= args[1].intVal)
+
+defun ">", args:
+  return newBool(args[0].intVal > args[1].intVal)
+
+defun ">=", args:
+  return newBool(args[0].intVal >= args[1].intVal)
+
+defun "debug", args:
+  if args[0].falsy:
+    DEBUG = false
+    return newBool(false)
+  else:
+    DEBUG = true
+    return newBool(true)
+
+### Special Functions
+
+defspecfun "print-env", args, env:
   var p:Printer
   echo "Printing environment: $1" % env.name
   for k, v in env.data.pairs:

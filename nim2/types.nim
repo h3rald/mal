@@ -16,10 +16,10 @@ type
     nHashMap,
     nProc, 
     nSpecProc,
-    nBool
+    nBool,
+    nNil
   NodeHash* = Table[string, Node]
   Node* = object
-    kindName*: string
     case kind*: NodeKind
     of nProc:
       procVal*: NodeProc
@@ -43,9 +43,10 @@ type
       hashVal*: NodeHash
     of nBool:
       boolVal*: bool
-  NodeArgs* = varargs[Node]
-  NodeProc* = proc(args: NodeArgs): Node
-  NodeSpecProc* = proc(args: NodeArgs, env: Env): Node
+    of nNil:
+      discard
+  NodeProc* = proc(args: varargs[Node]): Node
+  NodeSpecProc* = proc(args: varargs[Node], env: Env): Node
   Env* = ref EnvObj
   EnvObj* = object
     name*: string
@@ -72,37 +73,29 @@ proc `position=`*(r: var Reader, value: int) {.inline.} =
 
 proc newList*(nseq: seq[Node]): Node =
   result.kind = nList
-  result.kindName = "list"
   result.listVal = nseq
 
 proc newNil*(): Node = 
-  result.kind = nList
-  result.kindName = "list"
-  result.listVal = @[]
+  result.kind = nNil
 
 proc newVector*(nseq: seq[Node]): Node =
   result.kind = nVector
-  result.kindName = "vector"
   result.vectorVal = nseq
 
 proc newSymbol*(s: string): Node =
   result.kind = nSymbol
-  result.kindName = "symbol"
   result.symbolVal = s
 
 proc newBool*(s: bool): Node =
   result.kind = nBool
-  result.kindName = "boolean"
   result.boolVal = s
 
 proc newInt*(i: int): Node =
   result.kind = nInt
-  result.kindName = "int"
   result.intVal = i
 
 proc newHashMap*(h: NodeHash): Node =
   result.kind = nHashMap
-  result.kindName = "hashmap"
   result.hashVal = h
 
 proc `[]=`*(h: var NodeHash, key: string, value: Node) =
@@ -110,25 +103,85 @@ proc `[]=`*(h: var NodeHash, key: string, value: Node) =
 
 proc newString*(s: string): Node = 
   result.kind = nString
-  result.kindName = "string"
   result.stringVal = s
 
 proc newKeyword*(s: string): Node = 
   result.kind = nKeyword
-  result.kindName = "keyword"
   result.keyVal = s
 
 proc newProc*(f: NodeProc): Node = 
   result.kind = nProc
-  result.kindName = "procedure"
   result.procVal = f
 
 proc newSpecProc*(f: NodeSpecProc): Node = 
   result.kind = nSpecProc
-  result.kindName = "special procedure"
   result.specProcVal = f
 
 ### Helper procs
+
+proc kindName*(n: Node): string =
+  case n.kind:
+    of nList:
+      return "list"
+    of nVector:
+      return "vector"
+    of nSymbol:
+      return "symbol"
+    of nProc:
+      return "function"
+    of nSpecProc:
+      return "special-function"
+    of nInt:
+      return "int"
+    of nString:
+      return "string"
+    of nKeyword:
+      return "keyword"
+    of nBool:
+      return "boolean"
+    of nHashMap:
+      return "hashmap"
+    of nNil:
+      return "nil"
+    of nAtom:
+      return "atom"
+
+proc `==`*(a, b: Node): bool =
+  if a.kind != b.kind:
+    return false
+  case a.kind:
+    of nList:
+      return a.listVal == b.listVal
+    of nVector:
+      return a.vectorVal == b.vectorVal
+    of nSymbol:
+      return a.symbolVal == b.symbolVal
+    of nProc:
+      return a.procVal == b.procVal
+    of nSpecProc:
+      return a.specProcVal == b.specProcVal
+    of nInt:
+      return a.intVal == b.intVal
+    of nString:
+      return a.stringVal == b.stringVal
+    of nKeyword:
+      return a.keyVal == b.keyVal
+    of nBool:
+      return a.boolVal == b.boolVal
+    of nHashMap:
+      return a.hashVal == b.hashVal
+    of nNil:
+      return true
+    of nAtom:
+      return a.atomVal == b.atomVal
+
+
+proc falsy*(n: Node): bool =
+  var p:Printer
+  if n.kind == nNil or n.kind == nBool and n.boolVal == false:
+    return true
+  else:
+    return false
 
 proc code2kind(s: string): string =
   let id = s[0..2]

@@ -44,11 +44,13 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result = $form.intVal
     of nBool:
       if form.boolVal: 
-        result = "#t" 
+        result = "true" 
       else: 
-        result = "#f"
+        result = "false"
     of nKeyword:
       result = "$1" % [form.keyVal]
+    of nNil:
+      result = "nil"
     of nString:
       if printReadably:
         result = form.stringVal.replace("\n", "\\n").replace("\"", "\\\"")

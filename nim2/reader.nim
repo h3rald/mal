@@ -51,20 +51,16 @@ proc readAtom*(r: var Reader): Node =
   if token.match(REGEX_KEYWORD):
     result.kind = nKeyword
     result.keyVal = token.substr(1, token.len-1)
-    result.kindName = "keyword"
   elif token.match(REGEX_STRING):
     result.kind = nString
     result.stringVal = token.substr(1, token.len-2).replace("\\\"", "\"").replace("\\n", "\n")
-    result.kindName = "string"
   elif token.match(REGEX_INT):
     result.kind = nInt
     result.intVal = token.parseInt
-    result.kindName = "int"
   #elif token.match(REGEX_SYMBOL):
   else:
     result.kind = nSymbol
     result.symbolVal = token
-    result.kindName = "symbol"
   #else:
   #  result.kind = nAtom
   #  result.atomVal = token
