@@ -79,6 +79,17 @@ defun "count", args:
   else:
     error "count: First argument is not a list or vector"
 
+defun "cons", args:
+  var list = newSeq[Node]()
+  list.add args[0]
+  return newList(list & args[1].seqVal)
+
+defun "concat", args:
+  var list: seq[Node]
+  for arg in args:
+    list = list & arg.seqVal
+  return newList(list)
+
 ### String Functions
 
 defun "read-string", args:

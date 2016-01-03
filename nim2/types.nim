@@ -206,3 +206,6 @@ proc falsy*(n: Node): bool =
     return true
   else:
     return false
+
+proc isPair*(n: Node): bool =
+  return n.kind in {List, Vector} and n.seqVal.len > 0
