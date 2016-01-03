@@ -49,20 +49,16 @@ proc next*(r: var Reader): string =
 proc readAtom*(r: var Reader): Node =
   let token = r.peek()
   if token.match(REGEX_KEYWORD):
-    result.kind = nKeyword
-    result.keyVal = token.substr(1, token.len-1)
+    return newKeyword(token.substr(1, token.len-1))
   elif token.match(REGEX_STRING):
-    result.kind = nString
-    result.stringVal = token.substr(1, token.len-2).replace("\\\"", "\"").replace("\\n", "\n")
+    return newString(token.substr(1, token.len-2).replace("\\\"", "\"").replace("\\n", "\n"))
   elif token.match(REGEX_INT):
-    result.kind = nInt
-    result.intVal = token.parseInt
+    return newInt(token.parseInt)
   #elif token.match(REGEX_SYMBOL):
   else:
-    result.kind = nSymbol
-    result.symbolVal = token
+    return newSymbol(token)
   #else:
-  #  result.kind = nAtom
+  #  result.kind = Atom
   #  result.atomVal = token
   #  result.kindName = "atom"
 
@@ -115,9 +111,9 @@ proc readHashMap*(r: var Reader): Node =
     key = r.readAtom()
     discard r.next()
     var success = false
-    if key.kind == nString or key.kind == nKeyword:
+    if key.kind == String or key.kind == Keyword:
       var hashkey:string = key.kindName[0..2] & ":"
-      if key.kind == nString:
+      if key.kind == String:
         hashkey &= key.stringVal
       else:
         hashkey &= key.keyVal
@@ -163,7 +159,7 @@ proc readForm*(r: var Reader): Node =
     of "@":
       discard r.next()
       let sym = r.readForm();
-      #if sym.kind != nSymbol:
+      #if sym.kind != Symbol:
       #  error "Cannot derefence $1: $2" % [sym.kindName, p.prStr(sym)]
       #  return
       result = newList(@[newSymbol("deref"), sym])

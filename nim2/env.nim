@@ -85,7 +85,7 @@ proc defineFunction(sym: string, p: NodeProc) =
   MAINENV.set(sym, newProc(p))
 
 proc defineSpecialFunction(sym: string, p: NodeSpecProc) =
-  MAINENV.set(sym, newSpecProc(p))
+  MAINENV.set(sym, newSpecProc(p, sym))
 
 proc defconst*(sym: string, n: Node) = 
   MAINENV.set(sym, n)
@@ -130,18 +130,15 @@ defun "list", args:
   return newList(list)
 
 defun "list?", args:
-  if args[0].kind == nList:
+  if args[0].kind == List:
     return newBool(true)
   else:
     return newBool(false)
 
 defun "empty?", args:
   case args[0].kind
-  of nList:
-    if args[0].listVal.len == 0:
-      return newBool(true)
-  of nVector:
-    if args[0].vectorVal.len == 0:
+  of List, Vector:
+    if args[0].seqVal.len == 0:
       return newBool(true)
   else:
     error "empty?: First argument is not a list or vector"
@@ -149,12 +146,10 @@ defun "empty?", args:
 
 defun "count", args:
   case args[0].kind:
-  of nNil:
+  of Nil:
     return newInt(0)
-  of nList:
-    return newInt(args[0].listVal.len)
-  of nVector:
-    return newInt(args[0].vectorVal.len)
+  of List, Vector:
+    return newInt(args[0].seqVal.len)
   else:
     error "count: First argument is not a list or vector"
 

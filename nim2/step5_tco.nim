@@ -28,7 +28,7 @@ proc read(prompt = PROMPT): Node =
 proc print(n: Node) =
   echo p.prStr(n)
 
-proc eval(ast: Node, env: Env): Node
+proc eval(orig_ast: Node, env: Env): Node
 
 proc eval_ast(ast: Node, env: Env): Node = 
   var p:Printer
@@ -69,46 +69,57 @@ proc applySpec(f, list: Node, env: Env): Node =
   return f.specProcVal(args, env)
 
 
-proc eval(ast: Node, env: Env): Node = 
-  var p:Printer
-  dbg:
-    echo "EVAL: AST -> " & p.prStr(ast)
-  case ast.kind:
-    of List:
-      dbg: 
-        echo "EVAL: list"
-      if ast.seqVal.len == 0:
-        return ast
-      let car = ast.seqVal[0]
-      case car.kind:
-      of Proc:
-        echo "EVAL: closure"
-        return apply(car, eval_ast(ast, env))
-      of Symbol, List:
-        # Evaluate the first item of the list, check if it is a known symbol
-        var evalSym = eval(car, env)
-        case evalSym.kind:
-          of Proc:
-            dbg:
-              echo "EVAL: normal form"
-            # Apply normal form to evaluated AST
-            return apply(evalSym, eval_ast(ast, env))
-          of SpecProc:
-            dbg:
-              echo "EVAL: special form"
-            # Apply special form to unevaluated AST
-            return applySpec(evalSym, ast, env)
+proc eval(orig_ast: Node, env: Env): Node = 
+  var ast = orig_ast
+  while true:
+    var p:Printer
+    dbg:
+      echo "EVAL: AST -> " & p.prStr(ast)
+    case ast.kind:
+      of List:
+        dbg: 
+          echo "EVAL: list"
+        if ast.seqVal.len == 0:
+          return ast
+        let car = ast.seqVal[0]
+        let cdr = ast.seqVal[1 .. ast.seqVal.len-1]
+        case car.kind:
+        of Proc:
+          dbg:
+            echo "EVAL: closure"
+          if ast.env != nil:
+            var fAst = ast.ast
+            var fEnv = newEnv("closure", outer = ast.env, binds = ast.params, exprs = cdr)
+            ast = apply(ast, eval_ast(fAst, fEnv))
+            continue
           else:
-            dbg:
-              echo "EVAL: unknown form" # Unlikely...
-            return eval_ast(ast, env)
+            return apply(car, eval_ast(ast, env))
+        of Symbol, List:
+          # Evaluate the first item of the list, check if it is a known symbol
+          var fun = eval(car, env)
+          case fun.kind:
+            of Proc:
+              dbg:
+                echo "EVAL: normal form"
+              return apply(fun, eval_ast(ast, env))
+            of SpecProc:
+              dbg:
+                echo "EVAL: special form"
+              # Apply special form to unevaluated AST
+              # TODO: check TCO!
+              ast = applySpec(fun, ast, env)
+              continue
+            else:
+              dbg:
+                echo "EVAL: unknown form" # Unlikely...
+              quit()
+              return eval_ast(ast, env)
+        else:
+          return eval_ast(ast, env)
       else:
+        dbg:
+          echo "EVAL: other"
         return eval_ast(ast, env)
-    else:
-      dbg:
-        echo "EVAL: other"
-      discard
-  return eval_ast(ast, env)
 
 proc rep(env: Env) = 
   print(eval(read(), env))
@@ -130,9 +141,9 @@ defspecfun "def!", args, env:
 defspecfun "let*", args, env:
   var nEnv = newEnv("let*", env)
   var blist: seq[Node]
-  case args[0].kind:
+  case args[1].kind: # was 0
     of List, Vector:
-      blist = args[0].seqVal
+      blist = args[1].seqVal # was 0
     else:
       error("let*: The first parameter must be a list.")
       return
@@ -142,11 +153,15 @@ defspecfun "let*", args, env:
   while c<blist.len:
     nEnv.set(blist[c].symbolVal, eval(blist[c+1], nEnv))
     c.inc(2)
-  return eval(args[1], nEnv)
+  #return eval(args[1], nEnv)
 
 defspecfun "do", args, env:
-  for arg in args:
-    result = eval(arg, env)
+  #for arg in args:
+  var i = 0
+  while i < args.len-1: # one less arg
+    result = eval(args[i], env)
+    i.inc
+  result = args[args.len-1]
 
 defspecfun "if", args, env:
   var cond = eval(args[0], env)
@@ -157,11 +172,13 @@ defspecfun "if", args, env:
   if cond.falsy:
     dbg:
       echo "IF: false"
-    return eval(ifFalse, env)
+    #return eval(ifFalse, env)
+    return ifFalse
   else:
     dbg:
       echo "IF: true"
-    return eval(ifTrue, env)
+    #return eval(ifTrue, env)
+    return ifTrue
 
 defspecfun "fn*", args, env:
   var p:Printer
@@ -188,7 +205,7 @@ defspecfun "fn*", args, env:
     dbg:
       echo "CLOSURE - result: " & p.prStr(res)
     return res
-  return newProc(closure)
+  return newProc(closure, ast = args[1], params = args[0].seqVal, env = env)
   
 defalias "lambda", "fn*"
 

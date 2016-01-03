@@ -6,16 +6,18 @@ import
 proc prStr*(p: Printer, form: Node, printReadably = true): string =
   result = ""
   case form.kind:
-    of nList:
-      result &= "("
+    of List, Vector:
+      let start = if form.kind == List: "(" else: "["
+      let finish = if form.kind == List: ")" else: "]"
+      result &= start
       var count = 0
-      for i in form.listVal:
+      for i in form.seqVal:
         count.inc
         result &= p.prStr(i, printReadably)
-        if count < form.listVal.len:
+        if count < form.seqVal.len:
           result &= " "
-      result &= ")"
-    of nHashMap:
+      result &= finish
+    of HashMap:
       result &= "{"
       var count = 0
       for key, value in form.hashVal.pairs:
@@ -31,39 +33,30 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
         if count < form.hashVal.len:
           result &= " "
       result &= "}"
-    of nVector:
-      result &= "["
-      var count = 0
-      for i in form.vectorVal:
-        count.inc
-        result &= p.prStr(i, printReadably)
-        if count < form.vectorVal.len:
-          result &= " "
-      result &= "]"
-    of nInt:
+    of Int:
       result = $form.intVal
-    of nBool:
+    of Bool:
       if form.boolVal: 
         result = "true" 
       else: 
         result = "false"
-    of nKeyword:
+    of Keyword:
       result = "$1" % form.keyVal
-    of nNil:
+    of Nil:
       result = "nil"
-    of nString:
+    of String:
       if printReadably:
         result = form.stringVal.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"").replace("\r", "\\r")
         result = "\"$1\"" % result
       else:
         result = form.stringVal
-    of nSymbol:
+    of Symbol:
       result = form.symbolVal
-    of nAtom:
+    of Atom:
       result = form.atomVal
-    of nProc:
+    of Proc:
       result = "#<function>"
-    of nSpecProc:
+    of SpecProc:
       result = "#<special-function>"
 
 proc `$`*(n: Node): string =

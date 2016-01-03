@@ -32,22 +32,22 @@ proc eval(ast: Node, env: Env): Node
 proc eval_ast(ast: Node, env: Env): Node = 
   var p:Printer
   case ast.kind:
-    of nSymbol:
+    of Symbol:
       let val = ast.symbolVal
       var hashkey: string
       hashkey = ast.symbolVal
       dbg:
         echo "EVAL_AST: symbol: " & ast.symbolVal
       return env.get(hashkey)
-    of nList:
+    of List:
       dbg:
         echo "EVAL_AST: list"
-      return newList(map(ast.listVal, proc(n: Node): Node = return eval(n, env)))
-    of nVector:
+      return newList(map(ast.seqVal, proc(n: Node): Node = return eval(n, env)))
+    of Vector:
       dbg:
         echo "EVAL_AST: vector"
-      return newVector(map(ast.vectorVal, proc(n: Node): Node = return eval(n, env)))
-    of nHashMap:
+      return newVector(map(ast.seqVal, proc(n: Node): Node = return eval(n, env)))
+    of HashMap:
       dbg:
         echo "EVAL_AST: hashmap"
       var hash = initTable[string, Node]()
@@ -60,26 +60,26 @@ proc eval_ast(ast: Node, env: Env): Node =
       return ast
 
 proc apply(f, list: Node): Node =
-  let args = list.listVal[1 .. list.listVal.len-1]
+  let args = list.seqVal[1 .. list.seqVal.len-1]
   return f.procVal(args)
 
 proc applySpec(f, list: Node, env: Env): Node =
-  let args = list.listVal[1 .. list.listVal.len-1]
+  let args = list.seqVal[1 .. list.seqVal.len-1]
   return f.specProcVal(args, env)
 
 
 proc eval(ast: Node, env: Env): Node = 
   case ast.kind:
-    of nList:
+    of List:
       # Evaluate the first item of the list, check if it's a known symbol
-      var evalSym = eval_ast(ast.listVal[0], env)
+      var evalSym = eval_ast(ast.seqVal[0], env)
       case evalSym.kind:
-        of nProc:
+        of Proc:
           dbg:
             echo "EVAL: normal form"
           # Apply normal form to evaluated AST
           return apply(evalSym, eval_ast(ast, env))
-        of nSpecProc:
+        of SpecProc:
           dbg:
             echo "EVAL: special form"
           # Apply special form to unevaluated AST
@@ -107,10 +107,8 @@ defspec "let*", args, env:
   var nEnv = newEnv("let*", env)
   var blist: seq[Node]
   case args[0].kind:
-    of nList:
-      blist = args[0].listVal
-    of nVector:
-      blist = args[0].vectorVal
+    of List, Vector:
+      blist = args[0].seqVal
     else:
       error("let*: The first parameter must be a list.")
       return

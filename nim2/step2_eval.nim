@@ -29,7 +29,7 @@ proc eval(ast: Node, env: NodeHash): Node
 proc eval_ast(ast: Node, env: NodeHash): Node = 
   var p:Printer
   case ast.kind:
-    of nSymbol:
+    of Symbol:
       var hashkey: string
       hashkey = "sym:" & ast.symbolVal
       dbg:
@@ -38,15 +38,15 @@ proc eval_ast(ast: Node, env: NodeHash): Node =
         return env[hashkey]
       else:
         error "Symbol '$1' not found" % [ast.symbolVal]
-    of nList:
+    of List:
       dbg:
         echo "EVAL_AST: list"
       return newList(map(ast.listVal, proc(n: Node): Node = return eval(n, env)))
-    of nVector:
+    of Vector:
       dbg:
         echo "EVAL_AST: vector"
       return newVector(map(ast.vectorVal, proc(n: Node): Node = return eval(n, env)))
-    of nHashMap:
+    of HashMap:
       dbg:
         echo "EVAL_AST: hashmap"
       var hash = initTable[string, Node]()
@@ -65,11 +65,11 @@ proc apply(list: Node): Node =
 
 
 proc eval(ast: Node, env: NodeHash): Node = 
-  if ast.kind != nList:
+  if ast.kind != List:
     return eval_ast(ast, env)
   else:
     var list = eval_ast(ast, env)
-    if (list.listVal[0].kind == nProc):
+    if (list.listVal[0].kind == Proc):
       return apply(list)
     else:
       return list

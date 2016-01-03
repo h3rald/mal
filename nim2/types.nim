@@ -6,44 +6,47 @@ type
     pos*: int
     tokens*: seq[string]
   NodeKind* = enum
-    nList,
-    nAtom,
-    nSymbol,
-    nString,
-    nInt,
-    nKeyword,
-    nVector,
-    nHashMap,
-    nProc, 
-    nSpecProc,
-    nBool,
-    nNil
+    List,
+    Atom,
+    Symbol,
+    String,
+    Int,
+    Keyword,
+    Vector,
+    HashMap,
+    Proc, 
+    SpecProc,
+    Bool,
+    Nil
   NodeHash* = Table[string, Node]
-  Node* = object
+  Node* = ref NodeObj
+  NodeObj* = object
     case kind*: NodeKind
-    of nProc:
+    of Proc:
       procVal*: NodeProc
-    of nSpecProc:
+      ast*: Node
+      params*: seq[Node]
+      env*: Env
+    of SpecProc:
+      name*: string
       specProcVal*: NodeSpecProc
-    of nList:   
-      listVal*:   seq[Node]
-    of nSymbol: 
+    of List, Vector:   
+      seqVal*:   seq[Node]
+    of Symbol: 
       symbolVal*: string
-    of nString: 
+    of String: 
       stringVal*: string
-    of nInt:    
+    of Int:    
       intVal*:    int
-    of nAtom:   
+    of Atom:   
       atomVal*: string
-    of nKeyword: 
+    of Keyword: 
       keyVal*: string
-    of nVector: 
-      vectorVal*: seq[Node]
-    of nHashMap: 
+    of HashMap: 
       hashVal*: NodeHash
-    of nBool:
+    of Bool:
       boolVal*: bool
-    of nNil:
+    of Nil:
       discard
   NodeProc* = proc(args: varargs[Node]): Node
   NodeSpecProc* = proc(args: varargs[Node], env: Env): Node
@@ -72,117 +75,136 @@ proc `position=`*(r: var Reader, value: int) {.inline.} =
   r.pos = value
 
 proc newList*(nseq: seq[Node]): Node =
-  result.kind = nList
-  result.listVal = nseq
+  new(result)
+  result.kind = List
+  result.seqVal = nseq
 
 proc newNil*(): Node = 
-  result.kind = nNil
+  new(result)
+  result.kind = Nil
 
 proc newVector*(nseq: seq[Node]): Node =
-  result.kind = nVector
-  result.vectorVal = nseq
+  new(result)
+  result.kind = Vector
+  result.seqVal = nseq
 
 proc newSymbol*(s: string): Node =
-  result.kind = nSymbol
+  new(result)
+  result.kind = Symbol
   result.symbolVal = s
 
 proc newBool*(s: bool): Node =
-  result.kind = nBool
+  new(result)
+  result.kind = Bool
   result.boolVal = s
 
 proc newInt*(i: int): Node =
-  result.kind = nInt
+  new(result)
+  result.kind = Int
   result.intVal = i
 
 proc newHashMap*(h: NodeHash): Node =
-  result.kind = nHashMap
+  new(result)
+  result.kind = HashMap
   result.hashVal = h
 
 proc `[]=`*(h: var NodeHash, key: string, value: Node) =
   h.add(key, value)
 
 proc newString*(s: string): Node = 
-  result.kind = nString
+  new(result)
+  result.kind = String
   result.stringVal = s
 
 proc newKeyword*(s: string): Node = 
-  result.kind = nKeyword
+  new(result)
+  result.kind = Keyword
   result.keyVal = s
 
-proc newProc*(f: NodeProc): Node = 
-  result.kind = nProc
+proc newProc*(f: NodeProc, ast: Node, params: seq[Node], env: Env): Node = 
+  new(result)
+  result.kind = Proc
+  result.ast = ast
+  result.params = params
+  result.env = env
   result.procVal = f
 
-proc newSpecProc*(f: NodeSpecProc): Node = 
-  result.kind = nSpecProc
+proc newProc*(f: NodeProc): Node = 
+  new(result)
+  result.kind = Proc
+  result.ast = nil
+  result.params = nil
+  result.env = nil
+  result.procVal = f
+
+proc newSpecProc*(f: NodeSpecProc, s: string): Node = 
+  new(result)
+  result.kind = SpecProc
+  result.name = s
   result.specProcVal = f
 
 ### Helper procs
 
 proc kindName*(n: Node): string =
   case n.kind:
-    of nList:
+    of List:
       return "list"
-    of nVector:
+    of Vector:
       return "vector"
-    of nSymbol:
+    of Symbol:
       return "symbol"
-    of nProc:
+    of Proc:
       return "function"
-    of nSpecProc:
+    of SpecProc:
       return "special-function"
-    of nInt:
+    of Int:
       return "int"
-    of nString:
+    of String:
       return "string"
-    of nKeyword:
+    of Keyword:
       return "keyword"
-    of nBool:
+    of Bool:
       return "boolean"
-    of nHashMap:
+    of HashMap:
       return "hashmap"
-    of nNil:
+    of Nil:
       return "nil"
-    of nAtom:
+    of Atom:
       return "atom"
 
 proc `==`*(a, b: Node): bool =
-  if a.kind != b.kind:
-    if a.kind == nList and b.kind == nVector:
-      return a.listVal == b.vectorVal
-    if b.kind == nList and a.kind == nVector:
-      return b.listVal == a.vectorVal
+  if a.kind != b.kind and not (a.kind in {List, Vector}):
+    return a.seqVal == b.seqVal
+  else:
     return false
   case a.kind:
-    of nList:
-      return a.listVal == b.listVal
-    of nVector:
-      return a.vectorVal == b.vectorVal
-    of nSymbol:
+    of List, Vector:
+      return a.seqVal == b.seqVal
+    of Symbol:
       return a.symbolVal == b.symbolVal
-    of nProc:
+    of Proc:
       return a.procVal == b.procVal
-    of nSpecProc:
+    of SpecProc:
       return a.specProcVal == b.specProcVal
-    of nInt:
+    of Int:
       return a.intVal == b.intVal
-    of nString:
+    of String:
       return a.stringVal == b.stringVal
-    of nKeyword:
+    of Keyword:
       return a.keyVal == b.keyVal
-    of nBool:
+    of Bool:
       return a.boolVal == b.boolVal
-    of nHashMap:
+    of HashMap:
       return a.hashVal == b.hashVal
-    of nNil:
+    of Nil:
       return true
-    of nAtom:
+    of Atom:
       return a.atomVal == b.atomVal
 
 
 proc falsy*(n: Node): bool =
   var p:Printer
-  if n.kind == nNil or n.kind == nBool and n.boolVal == false:
+  if n.kind == Nil or n.kind == Bool and n.boolVal == false:
     return true
   else:
     return false
