@@ -7,11 +7,12 @@ import
 
 let
   # Original PCRE:  """[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"""
-  REGEX_TOKEN   = re"""[\s,]*{(~@|[\[\]\{\}()'`~^@]|"(\\.|[^\\"])*"|;.*|[^\s\[\]\{\}('"`,;)]*)}"""
+  REGEX_TOKEN   = re"""[\s,]*{(~@|[\[\]\{\}()'`~^@]|"(\\.|[^\\"])*"|;[^\\n]*|[^\s\[\]\{\}('"`,;)]*)}"""
   REGEX_INT     = re"""^[\d]+$"""
   REGEX_SYMBOL  = re"""^[\w]+$"""
   REGEX_STRING  = re"""^".*"$"""
   REGEX_KEYWORD  = re"""^:[\w]+$"""
+  REGEX_COMMENT = re"""^;"""
 
 
 const
@@ -29,15 +30,22 @@ proc tokenizer(str: string): seq[string] =
     token: string
   while s != "" and s.match(REGEX_TOKEN, matches) and matches[0] != nil and matches[0] != "":
     token = matches[0]
-    result.add(token)
+    if not token.match(REGEX_COMMENT):
+      result.add(token)
     s = s.substr(s.find(token) + token.len, s.len-1)
     matches[0] = nil
   if token.len == 0:
     error UNMATCHED_DOUBLE_QUOTE
     
-proc readStr*(str: string): Reader =
-  result.tokens = str.tokenizer()
-  result.pos = 0
+proc readForm*(r: var Reader): Node
+
+proc readStr*(str: string): Node =
+  var r:Reader
+  r.tokens = str.tokenizer()
+  r.pos = 0
+  if r.tokens.len == 0:
+    raise newException(NoTokensError, "No tokens to process")
+  return r.readForm()
 
 proc peek*(r: Reader): string =
   result = r.tokens[r.pos]
@@ -61,8 +69,6 @@ proc readAtom*(r: var Reader): Node =
   #  result.kind = Atom
   #  result.atomVal = token
   #  result.kindName = "atom"
-
-proc readForm*(r: var Reader): Node
 
 proc readList*(r: var Reader): Node = 
   var list = newSeq[Node](0)
@@ -158,7 +164,7 @@ proc readForm*(r: var Reader): Node =
       result = newList(@[newSymbol("splice-unquote"), r.readForm()])
     of "@":
       discard r.next()
-      let sym = r.readForm();
+      let sym = r.readForm()
       #if sym.kind != Symbol:
       #  error "Cannot derefence $1: $2" % [sym.kindName, p.prStr(sym)]
       #  return

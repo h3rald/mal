@@ -53,6 +53,7 @@ type
     name*: string
     outer*: Env
     data*: NodeHash
+  NoTokensError* = object of Exception
   ParsingError* = object of Exception
 
 var

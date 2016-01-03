@@ -24,8 +24,7 @@ var
 proc read(prompt = PROMPT): Node =
   var line = readline(prompt)
   historyAdd(line)
-  r = line.readStr()
-  return r.readForm()
+  return line.readStr()
 
 proc print(n: Node) =
   echo p.prStr(n)
@@ -85,7 +84,6 @@ proc eval(ast: Node, env: var Env): Node =
       return ast.eval_ast(env)
     let 
       first = ast.seqVal[0]
-      second = ast.seqVal[1]
       last = ast.seqVal.high
     case first.kind
     of Symbol:
@@ -96,10 +94,14 @@ proc eval(ast: Node, env: var Env): Node =
         for k, v in env.data.pairs:
            echo "'$1'\t\t= $2" % [k, p.prStr(v)]
       of "def!":
-        let third = ast.seqVal[2]
+        let
+          second = ast.seqVal[1]
+          third = ast.seqVal[2]
         return env.set(second.stringVal, eval(third, env))
       of "let*":
-        let third = ast.seqVal[2]
+        let 
+          second = ast.seqVal[1]
+          third = ast.seqVal[2]
         var nEnv = newEnv("let*", env)
         case second.kind
         of List, Vector:
@@ -116,6 +118,7 @@ proc eval(ast: Node, env: var Env): Node =
         # Continue loop (TCO)
       of "if":
         let
+          second = ast.seqVal[1]
           third = ast.seqVal[2]
           cond = eval(second, env)
         if cond.falsy:
@@ -124,7 +127,9 @@ proc eval(ast: Node, env: var Env): Node =
           else: ast = newNil()
         else: ast = third
       of "fn*":
-        let third = ast.seqVal[2]
+        let 
+          second = ast.seqVal[1]
+          third = ast.seqVal[2]
         var nEnv = env
         let fn = proc(args: varargs[Node]): Node =
           var list = newSeq[Node]()
@@ -133,6 +138,10 @@ proc eval(ast: Node, env: var Env): Node =
           var newEnv = newEnv("fn*", nEnv, second, newList(list))
           return eval(third, newEnv)
         return newProc(fn, ast = third, params = second, env = env)
+      of "eval":
+        let 
+          second = ast.seqVal[1]
+        ast = eval(second, MAINENV)
       else:
         apply()
     else:
@@ -143,13 +152,16 @@ proc rep(env: var Env) =
 
 
 proc defnative*(s: string) =
-  var r: Reader = readStr(s)
-  discard eval(r.readForm(), MAINENV)
+  discard eval(readStr(s), MAINENV)
 
 defnative "(def! not (fn* (a) (if a false true)))"
 
+defnative "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))"
 
 ### Parse Options
+
+var FILE: string = nil
+var ARGV = newSeq[Node]()
 
 for kind, key, val in getopt():
   case kind:
@@ -159,10 +171,21 @@ for kind, key, val in getopt():
           DEBUG = true
         else:
           discard
+    of cmdArgument:
+      if FILE == nil:
+        FILE = val
+      else:
+        ARGV.add(newString(val))
     else:
       discard
+
+defconst "*ARGV*", newList(ARGV)
+
 
 ### REPL
 
 while true:
-  rep(MAINENV)
+  try:
+    rep(MAINENV)
+  except NoTokensError:
+    continue
