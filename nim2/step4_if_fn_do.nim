@@ -34,11 +34,11 @@ proc eval_ast(ast: Node, env: Env): Node =
   var p:Printer
   case ast.kind:
     of Symbol:
-      let val = ast.symbolVal
+      let val = ast.stringVal
       var hashkey: string
-      hashkey = ast.symbolVal
+      hashkey = ast.stringVal
       dbg:
-        echo "EVAL_AST: symbol: " & ast.symbolVal
+        echo "EVAL_AST: symbol: " & ast.stringVal
       return env.get(hashkey)
     of List:
       dbg:
@@ -124,7 +124,7 @@ defspecfun "def!", args, env:
   dbg:
     echo "def!: called"
   var evaluated = eval(args[1], env)
-  env.set(args[0].symbolVal, evaluated)
+  env.set(args[0].stringVal, evaluated)
   return evaluated
 
 defspecfun "let*", args, env:
@@ -140,7 +140,7 @@ defspecfun "let*", args, env:
     error("let*: The first parameter must be a list of even elemenets")
   var c = 0
   while c<blist.len:
-    nEnv.set(blist[c].symbolVal, eval(blist[c+1], nEnv))
+    nEnv.set(blist[c].stringVal, eval(blist[c+1], nEnv))
     c.inc(2)
   return eval(args[1], nEnv)
 

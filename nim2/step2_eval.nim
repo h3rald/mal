@@ -31,13 +31,13 @@ proc eval_ast(ast: Node, env: NodeHash): Node =
   case ast.kind:
     of Symbol:
       var hashkey: string
-      hashkey = "sym:" & ast.symbolVal
+      hashkey = "sym:" & ast.stringVal
       dbg:
-        echo "EVAL_AST: symbol: " & ast.symbolVal
+        echo "EVAL_AST: symbol: " & ast.stringVal
       if env.hasKey(hashKey):
         return env[hashkey]
       else:
-        error "Symbol '$1' not found" % [ast.symbolVal]
+        error "Symbol '$1' not found" % [ast.stringVal]
     of List:
       dbg:
         echo "EVAL_AST: list"

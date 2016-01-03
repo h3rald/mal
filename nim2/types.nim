@@ -15,26 +15,26 @@ type
     Vector,
     HashMap,
     Proc, 
-    SpecProc,
+    NativeProc, 
     Bool,
     Nil
   NodeHash* = Table[string, Node]
   Node* = ref NodeObj
+  NodeProc* = proc(args: varargs[Node]): Node
+  ProcType* = ref object
+    fun*: NodeProc
+    ast*: Node
+    params*: Node
+    env*: Env
   NodeObj* = object
     case kind*: NodeKind
     of Proc:
-      procVal*: NodeProc
-      ast*: Node
-      params*: seq[Node]
-      env*: Env
-    of SpecProc:
-      name*: string
-      specProcVal*: NodeSpecProc
+      procVal*: ProcType
+    of NativeProc:
+      nativeProcVal*: NodeProc
     of List, Vector:   
       seqVal*:   seq[Node]
-    of Symbol: 
-      symbolVal*: string
-    of String: 
+    of String, Symbol: 
       stringVal*: string
     of Int:    
       intVal*:    int
@@ -48,8 +48,6 @@ type
       boolVal*: bool
     of Nil:
       discard
-  NodeProc* = proc(args: varargs[Node]): Node
-  NodeSpecProc* = proc(args: varargs[Node], env: Env): Node
   Env* = ref EnvObj
   EnvObj* = object
     name*: string
@@ -91,7 +89,7 @@ proc newVector*(nseq: seq[Node]): Node =
 proc newSymbol*(s: string): Node =
   new(result)
   result.kind = Symbol
-  result.symbolVal = s
+  result.stringVal = s
 
 proc newBool*(s: bool): Node =
   new(result)
@@ -121,27 +119,28 @@ proc newKeyword*(s: string): Node =
   result.kind = Keyword
   result.keyVal = s
 
-proc newProc*(f: NodeProc, ast: Node, params: seq[Node], env: Env): Node = 
+proc newNativeProc*(f: NodeProc): Node = 
+  new(result)
+  result.kind = NativeProc
+  result.nativeProcVal = f
+
+proc newProc*(f: NodeProc, ast: Node, params: Node, env: Env): Node = 
   new(result)
   result.kind = Proc
-  result.ast = ast
-  result.params = params
-  result.env = env
-  result.procVal = f
+  result.procVal = new ProcType
+  result.procVal.ast = ast
+  result.procVal.params = params
+  result.procVal.env = env
+  result.procVal.fun = f
 
 proc newProc*(f: NodeProc): Node = 
   new(result)
   result.kind = Proc
-  result.ast = nil
-  result.params = nil
-  result.env = nil
-  result.procVal = f
-
-proc newSpecProc*(f: NodeSpecProc, s: string): Node = 
-  new(result)
-  result.kind = SpecProc
-  result.name = s
-  result.specProcVal = f
+  result.procVal = new ProcType
+  result.procVal.ast = nil
+  result.procVal.params = nil
+  result.procVal.env = nil
+  result.procVal.fun = f
 
 ### Helper procs
 
@@ -155,8 +154,8 @@ proc kindName*(n: Node): string =
       return "symbol"
     of Proc:
       return "function"
-    of SpecProc:
-      return "special-function"
+    of NativeProc:
+      return "native-function"
     of Int:
       return "int"
     of String:
@@ -173,22 +172,21 @@ proc kindName*(n: Node): string =
       return "atom"
 
 proc `==`*(a, b: Node): bool =
-  if a.kind != b.kind and not (a.kind in {List, Vector}):
-    return a.seqVal == b.seqVal
-  else:
-    return false
+  if a.kind != b.kind:
+    if (a.kind in {List, Vector}) and (b.kind in {List, Vector}):
+      return a.seqVal == b.seqVal
+    else:
+      return false
   case a.kind:
     of List, Vector:
       return a.seqVal == b.seqVal
-    of Symbol:
-      return a.symbolVal == b.symbolVal
     of Proc:
       return a.procVal == b.procVal
-    of SpecProc:
-      return a.specProcVal == b.specProcVal
+    of NativeProc:
+      return a.nativeProcVal == b.nativeProcVal
     of Int:
       return a.intVal == b.intVal
-    of String:
+    of String, Symbol:
       return a.stringVal == b.stringVal
     of Keyword:
       return a.keyVal == b.keyVal
@@ -203,21 +201,7 @@ proc `==`*(a, b: Node): bool =
 
 
 proc falsy*(n: Node): bool =
-  var p:Printer
   if n.kind == Nil or n.kind == Bool and n.boolVal == false:
     return true
   else:
     return false
-
-proc code2kind(s: string): string =
-  let id = s[0..2]
-  case id:
-    of "sym":
-      return "symbol"
-    of "key":
-      return "keyword"
-    of "str":
-      return "string"
-    else:
-      return "unknown"
-

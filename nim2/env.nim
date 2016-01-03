@@ -8,57 +8,61 @@ import
   printer
 
 
-proc set*(env: Env, sym: string, n: Node)
+proc set*(env: Env, sym: string, n: Node): Node {.discardable.}=
+  var p:Printer
+  dbg:
+    echo "ENV($1) SET: $2 = $3" % [env.name, sym, p.prStr(n)]
+  if env.data.hasKey(sym):
+    # TODO check -- otherwise it generates duplicated entries
+    env.data.del(sym)
+  env.data[sym] = n
+  return n
 
-proc newEnv(binds, exprs: seq[Node]): Env =
+proc newEnv(nBinds, nExprs: Node): Env =
   var p:Printer
   new(result)
   result.data = initTable[string, Node]()
   result.name = "closure"
+  var binds = newSeq[Node]()
+  var exprs = newSeq[Node]()
+  if nBinds.kind in {List, Vector}:
+    binds = nBinds.seqVal
+  if nExprs.kind in {List, Vector}:
+    exprs = nExprs.seqVal
   dbg:
     echo "binds($1) -> exprs($2)" % [$binds.len, $exprs.len]
-  for i in 0..max(binds.len-1, exprs.len-1):
-    if binds[i].symbolVal == "&": # Clojure-style variadic operator
+  for i in 0..binds.len-1:
+    if binds[i].stringVal == "&": # Clojure-style variadic operator
       if exprs.len == 0:
-        result.set(binds[i+1].symbolVal, newList(newSeq[Node]()))
+        discard result.set(binds[i+1].stringVal, newList(exprs))
       else:
-        result.set(binds[i+1].symbolVal, newList(exprs[i .. exprs.len-1]))
+        discard result.set(binds[i+1].stringVal, newList(exprs[i .. ^1]))
       break
     else:
-      result.set(binds[i].symbolVal, exprs[i])
+      discard result.set(binds[i].stringVal, exprs[i])
 
 proc newEnv*(name: string): Env =
-  result = newEnv(newSeq[Node](), newSeq[Node]())
+  result = newEnv(nBinds = newNil(), nExprs = newNil())
   result.name = name
 
 proc newEnv*(name: string, outer: Env): Env =
-  result = newEnv(newSeq[Node](), newSeq[Node]())
+  result = newEnv(nBinds = newNil(), nExprs = newNil())
   result.name = name
   result.outer = outer
 
-proc newEnv*(name: string, outer: Env, binds, exprs: seq[Node]): Env =
+proc newEnv*(name: string, outer: Env, binds, exprs: Node): Env =
   result = newEnv(binds, exprs)
   result.name = name
   result.outer = outer
 
-proc set*(env: Env, sym: string, n: Node) =
-  var p:Printer
-  dbg:
-    echo "ENV($1) SET: $2 = $3" % [env.name, sym, p.prStr(n)]
-  let key = "sym:" & sym
-  if env.data.hasKey(key):
-    # TODO check -- otherwise it generates duplicated entries
-    env.data.del(key)
-  env.data[key] = n
-
 proc copy*(env: Env, orig, alias: string) =
   dbg:
     echo "ENV($1) COPY: $2 -> $3" % [env.name, orig, alias]
-  env.data["sym:" & alias] = env.data["sym:" & orig]
+  env.data[alias] = env.data[orig]
 
 
 proc lookup*(env: Env, sym: string): Env =
-  if env.data.hasKey("sym:" & sym):
+  if env.data.hasKey(sym):
     dbg:
       echo "ENV($1) LOOKUP: symbol '$2' found" % [env.name, sym]
     return env
@@ -73,7 +77,7 @@ proc lookup*(env: Env, sym: string): Env =
 proc get*(env: Env, sym: string): Node = 
   let res = env.lookup(sym)
   if res != nil:
-    return res.data["sym:" & sym]
+    return res.data[sym]
   else:
     error "Symbol '$1' not found." % sym
 
@@ -82,23 +86,16 @@ proc get*(env: Env, sym: string): Node =
 var MAINENV* = newEnv("main")
 
 proc defineFunction(sym: string, p: NodeProc) =
-  MAINENV.set(sym, newProc(p))
-
-proc defineSpecialFunction(sym: string, p: NodeSpecProc) =
-  MAINENV.set(sym, newSpecProc(p, sym))
+  discard MAINENV.set(sym, newNativeProc(p))
 
 proc defconst*(sym: string, n: Node) = 
-  MAINENV.set(sym, n)
+  discard MAINENV.set(sym, n)
 
 proc defalias*(alias, orig: string) =
   MAINENV.copy(orig, alias)
 
 template defun*(s: string, args: expr, body: stmt): stmt {.immediate.} =
   defineFunction(s) do (args: varargs[Node]) -> Node:
-    body
-
-template defspecfun*(s: string, args, env: expr, body: stmt): stmt {.immediate.} =
-  defineSpecialFunction(s) do (args: varargs[Node], env: Env) -> Node:
     body
 
 ### Constants
@@ -192,10 +189,3 @@ defun "println", args:
   echo args.map(proc(n: Node): string = return $~n).join(" ")
   return newNil()
 
-### Special Functions
-
-defspecfun "print-env", args, env:
-  var p:Printer
-  echo "Printing environment: $1" % env.name
-  for k, v in env.data.pairs:
-    echo "'$1'\t\t= $2" % [k, p.prStr(v)]

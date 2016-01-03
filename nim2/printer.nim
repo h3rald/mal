@@ -51,13 +51,13 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       else:
         result = form.stringVal
     of Symbol:
-      result = form.symbolVal
+      result = form.stringVal
     of Atom:
       result = form.atomVal
+    of NativeProc:
+      result = "#<native-function>"
     of Proc:
       result = "#<function>"
-    of SpecProc:
-      result = "#<special-function>"
 
 proc `$`*(n: Node): string =
   var p:Printer
