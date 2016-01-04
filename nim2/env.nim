@@ -8,7 +8,7 @@ import
   printer
 
 
-proc set*(env: Env, sym: string, n: Node): Node {.discardable.}=
+proc set*(env: Env, sym: string, n: Node): Node {.discardable.} =
   var p:Printer
   dbg:
     echo "ENV($1) SET: $2 = $3" % [env.name, sym, p.prStr(n)]
@@ -60,18 +60,13 @@ proc copy*(env: Env, orig, alias: string) =
     echo "ENV($1) COPY: $2 -> $3" % [env.name, orig, alias]
   env.data[alias] = env.data[orig]
 
-
 proc lookup*(env: Env, sym: string): Env =
   if env.data.hasKey(sym):
-    dbg:
-      echo "ENV($1) LOOKUP: symbol '$2' found" % [env.name, sym]
     return env
   else:
     if env.outer != nil:
       return env.outer.lookup(sym)
     else: 
-      dbg:
-        echo "ENV($1) LOOKUP: symbol '$2' not found" % [env.name, sym]
       return nil
 
 proc get*(env: Env, sym: string): Node = 
@@ -79,7 +74,7 @@ proc get*(env: Env, sym: string): Node =
   if res != nil:
     return res.data[sym]
   else:
-    error "Symbol '$1' not found." % sym
+    raise newException(UnknownSymbolError, "Symbol '$1' not found." % sym)
 
 ### Main Environment
 

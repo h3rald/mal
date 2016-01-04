@@ -29,42 +29,54 @@ proc read(prompt = PROMPT): Node =
 proc print(n: Node) =
   echo p.prStr(n)
 
-proc eval(ast: Node, env: var Env): Node
+proc eval(ast: Node, env: Env): Node
 
 proc rep(env: var Env) = 
   print(eval(read(), env))
+
+proc isMacroCall(ast: Node, env: Env): bool =
+  if ast.kind == List and ast.seqVal[0].kind == Symbol:
+    try:
+      let f = env.get(ast.seqVal[0].stringVal)
+      if f.kind == Proc:
+        return f.procVal.isMacro
+      else:
+        return false
+    except UnknownSymbolError:
+      return false
+  return false
 
 proc eval_ast(ast: Node, env: var Env): Node = 
   var p:Printer
   case ast.kind:
     of Symbol:
-      dbg:
-        echo "EVAL_AST: symbol: " & ast.stringVal
+      #dbg:
+        #echo "EVAL_AST: symbol: " & ast.stringVal
       return env.get(ast.stringVal)
     of List:
-      dbg:
-        echo "EVAL_AST: list"
+      #dbg:
+        #echo "EVAL_AST: list"
       var list = newSeq[Node]()
       for i in ast.seqVal:
         list.add eval(i, env)
       return newList(list)
     of Vector:
-      dbg:
-        echo "EVAL_AST: vector"
+      #dbg:
+        #echo "EVAL_AST: vector"
       var list = newSeq[Node]()
       for i in ast.seqVal:
         list.add eval(i, env)
       return newVector(list)
     of HashMap:
-      dbg:
-        echo "EVAL_AST: hashmap"
+      #dbg:
+        #echo "EVAL_AST: hashmap"
       var hash = initTable[string, Node]()
       for k, v in ast.hashVal.pairs:
         hash[k] = eval(v, env)
       return newHashMap(hash)
     else:
-      dbg:
-        echo "EVAL_AST: literal: " & p.prStr(ast)
+      #dbg:
+        #echo "EVAL_AST: literal: " & p.prStr(ast)
       return ast
 
 ### Special Forms
@@ -75,26 +87,27 @@ proc quasiquoteFun(ast: Node): Node =
     list.add newSymbol("quote")
     list.add ast
     return newList(list)
-  let astFirst = ast.seqVal[0]
-  if astFirst.kind == Symbol and astFirst.stringVal == "unquote":
+  elif ast.seqVal[0].kind == Symbol and ast.seqVal[0].stringVal == "unquote":
     return ast.seqVal[1]
-  if astFirst.isPair and astFirst.seqVal[0].kind == Symbol and astFirst.seqVal[0].stringVal == "splice-unquote":
+  elif ast.seqVal[0].isPair and ast.seqVal[0].seqVal[0].kind == Symbol and ast.seqVal[0].seqVal[0].stringVal == "splice-unquote":
     list.add newSymbol("concat")
-    list.add astFirst.seqVal[1]
+    list.add ast.seqVal[0].seqVal[1]
     list.add quasiquoteFun(newList(ast.seqVal[1 .. ^1]))
     return newList(list)
-  list.add newSymbol("cons")
-  list.add quasiquoteFun(astFirst)
-  list.add quasiquoteFun(newList(ast.seqVal[1 .. ^1]))
-  return newList(list)
+  else:
+    list.add newSymbol("cons")
+    list.add quasiquoteFun(ast.seqVal[0])
+    list.add quasiquoteFun(newList(ast.seqVal[1 .. ^1]))
+    return newList(list)
 
-proc printEnvFun(env: var Env) =
+proc printEnvFun(env: var Env): Node =
   var p:Printer
   echo "Printing environment: $1" % env.name
   for k, v in env.data.pairs:
     echo "'$1'\t\t= $2" % [k, p.prStr(v)]
+  return newNil()
 
-proc defExclFun(ast: var Node, env: var Env): Node =
+proc defExclFun(ast: Node, env: var Env): Node =
   return env.set(ast.seqVal[1].stringVal, eval(ast.seqVal[2], env))
 
 proc letStarFun(ast: var Node, env: var Env) = 
@@ -114,28 +127,41 @@ proc doFun(ast: var Node, env: var Env) =
   ast = ast.seqVal[ast.seqVal.high]
   # Continue loop (TCO)
 
-proc ifFun(ast: var Node, env: var Env) =
+proc ifFun(ast: Node, env: Env): Node =
   if eval(ast.seqVal[1], env).falsy:
     if ast.seqVal.len > 3: 
-      ast = ast.seqVal[3]
-    else: ast = newNil()
-  else: ast = ast.seqVal[2]
+      return ast.seqVal[3]
+    else: return newNil()
+  else: return ast.seqVal[2]
   # Continue loop (TCO)
 
-proc fnStarFun(ast: var Node, env: var Env): Node =
-  var env = env # To avoid "illegal capture" errors
-  var ast = ast # To avoid "illegal capture" errors
+proc fnStarFun(ast: Node, env: Env): Node =
+  var fnEnv = env
   let fn = proc(args: varargs[Node]): Node =
     var list = newSeq[Node]()
     for arg in args:
       list.add(arg)
-    var newEnv = newEnv("fn*", env, ast.seqVal[1], newList(list))
+    var newEnv = newEnv("fn*", fnEnv, ast.seqVal[1], newList(list))
     return eval(ast.seqVal[2], newEnv)
   return newProc(fn, ast = ast.seqVal[2], params = ast.seqVal[1], env = env)
 
-proc eval(ast: Node, env: var Env): Node =
+proc defMacroExclFun(ast: Node, env: var Env): Node =
+  var fun = ast.seqVal[2].eval(env)
+  fun.procVal.isMacro = true
+  return env.set(ast.seqVal[1].stringVal, fun)
+
+proc macroExpandFun(ast: Node, env: Env): Node =
+  result = ast
+  while result.isMacroCall(env):
+    let f = env.get(ast.seqVal[0].stringVal)
+    result = f.procVal.fun(ast.seqVal[1 .. ^1]).macroExpandFun(env)
+
+###
+
+proc eval(ast: Node, env: Env): Node =
   var p:Printer
   var ast = ast
+  var env = env
   dbg:
     echo "EVAL: " & $ast
   template apply = 
@@ -150,16 +176,19 @@ proc eval(ast: Node, env: var Env): Node =
       return f.nativeProcVal(el.seqVal[1 .. ^1])
   while true:
     if ast.kind != List: return ast.eval_ast(env)
+    ast = macroExpandFun(ast, env)
+    if ast.kind != List or ast.seqVal.len == 0: return ast
     case ast.seqVal[0].kind
     of Symbol:
       case ast.seqVal[0].stringVal
-      of "print-env":   printEnvFun(env)
+      of "print-env":   return printEnvFun(env)
       of "def!":        return defExclFun(ast, env)
       of "let*":        letStarFun(ast, env)
       of "do":          doFun(ast, env)
-      of "if":          ifFun(ast, env)
+      of "if":          ast = ifFun(ast, env)
       of "fn*":         return fnStarFun(ast, env)
-      of "eval":        ast = eval(ast.seqVal[1], MAINENV)
+      of "defmacro!":   return defMacroExclFun(ast, env)
+      of "macroexpand": return macroExpandFun(ast.seqVal[1], env)
       of "quote":       return ast.seqVal[1]
       of "quasiquote":  ast = quasiquoteFun(ast.seqVal[1])
       else: apply()
@@ -171,6 +200,10 @@ proc defnative*(s: string) =
 defnative "(def! not (fn* (a) (if a false true)))"
 
 defnative "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))"
+
+defnative "(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))"
+
+defnative "(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))"
 
 ### Parse Options
 
@@ -195,6 +228,9 @@ for kind, key, val in getopt():
 
 defconst "*ARGV*", newList(ARGV)
 
+defun "eval", args:
+  return eval(args[0], MAINENV)
+
 
 ### REPL
 
@@ -203,3 +239,6 @@ while true:
     rep(MAINENV)
   except NoTokensError:
     continue
+  except:
+    echo getCurrentExceptionMsg()
+    echo getCurrentException().getStackTrace()

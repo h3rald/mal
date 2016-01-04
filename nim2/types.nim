@@ -26,6 +26,7 @@ type
     ast*: Node
     params*: Node
     env*: Env
+    isMacro*: bool
   NodeObj* = object
     case kind*: NodeKind
     of Proc:
@@ -54,6 +55,7 @@ type
     outer*: Env
     data*: NodeHash
   NoTokensError* = object of Exception
+  UnknownSymbolError* = object of Exception
   ParsingError* = object of Exception
 
 var
@@ -125,7 +127,7 @@ proc newNativeProc*(f: NodeProc): Node =
   result.kind = NativeProc
   result.nativeProcVal = f
 
-proc newProc*(f: NodeProc, ast: Node, params: Node, env: Env): Node = 
+proc newProc*(f: NodeProc, ast: Node, params: Node, env: Env, isMacro = false): Node = 
   new(result)
   result.kind = Proc
   result.procVal = new ProcType
@@ -133,8 +135,9 @@ proc newProc*(f: NodeProc, ast: Node, params: Node, env: Env): Node =
   result.procVal.params = params
   result.procVal.env = env
   result.procVal.fun = f
+  result.procVal.isMacro = isMacro
 
-proc newProc*(f: NodeProc): Node = 
+proc newProc*(f: NodeProc, isMacro = false): Node = 
   new(result)
   result.kind = Proc
   result.procVal = new ProcType
@@ -142,6 +145,7 @@ proc newProc*(f: NodeProc): Node =
   result.procVal.params = nil
   result.procVal.env = nil
   result.procVal.fun = f
+  result.procVal.isMacro = isMacro
 
 ### Helper procs
 

@@ -90,6 +90,19 @@ defun "concat", args:
     list = list & arg.seqVal
   return newList(list)
 
+defun "nth", args:
+  return args[0].seqVal[args[1].intVal]
+
+defun "first", args:
+  if args[0].seqVal.len == 0:
+    return newNil()
+  return args[0].seqVal[0]
+
+defun "rest", args:
+  if args[0].seqVal.len == 0:
+    return newList(args[0].seqVal)
+  return newList(args[0].seqVal[1 .. ^1])
+
 ### String Functions
 
 defun "read-string", args:
