@@ -26,10 +26,10 @@ proc read(prompt = PROMPT): Node =
   historyAdd(line)
   return line.readStr()
 
+proc eval(ast: Node, env: Env): Node
+
 proc print(n: Node) =
   echo p.prStr(n)
-
-proc eval(ast: Node, env: Env): Node
 
 proc rep(env: var Env) = 
   print(eval(read(), env))
@@ -50,33 +50,23 @@ proc eval_ast(ast: Node, env: var Env): Node =
   var p:Printer
   case ast.kind:
     of Symbol:
-      #dbg:
-        #echo "EVAL_AST: symbol: " & ast.stringVal
       return env.get(ast.stringVal)
     of List:
-      #dbg:
-        #echo "EVAL_AST: list"
       var list = newSeq[Node]()
       for i in ast.seqVal:
         list.add eval(i, env)
       return newList(list)
     of Vector:
-      #dbg:
-        #echo "EVAL_AST: vector"
       var list = newSeq[Node]()
       for i in ast.seqVal:
         list.add eval(i, env)
       return newVector(list)
     of HashMap:
-      #dbg:
-        #echo "EVAL_AST: hashmap"
       var hash = initTable[string, Node]()
       for k, v in ast.hashVal.pairs:
         hash[k] = eval(v, env)
       return newHashMap(hash)
     else:
-      #dbg:
-        #echo "EVAL_AST: literal: " & p.prStr(ast)
       return ast
 
 ### Special Forms
@@ -100,7 +90,7 @@ proc quasiquoteFun(ast: Node): Node =
     list.add quasiquoteFun(newList(ast.seqVal[1 .. ^1]))
     return newList(list)
 
-proc printEnvFun(env: var Env): Node =
+proc printEnvFun(env: Env): Node =
   var p:Printer
   echo "Printing environment: $1" % env.name
   for k, v in env.data.pairs:
@@ -110,7 +100,7 @@ proc printEnvFun(env: var Env): Node =
 proc defExclFun(ast: Node, env: var Env): Node =
   return env.set(ast.seqVal[1].stringVal, eval(ast.seqVal[2], env))
 
-proc letStarFun(ast: var Node, env: var Env) = 
+proc letStarFun(ast: Node, env: var Env): Node = 
   var nEnv = newEnv("let*", env)
   case ast.seqVal[1].kind
   of List, Vector:
@@ -118,13 +108,13 @@ proc letStarFun(ast: var Node, env: var Env) =
       discard nEnv.set(ast.seqVal[1].seqVal[i].stringVal, eval(ast.seqVal[1].seqVal[i+1], nEnv))
   else: 
     error("let*: First argument is not a list or vector")
-  ast = ast.seqVal[2]
   env = nEnv
+  return ast.seqVal[2]
   # Continue loop (TCO)
 
-proc doFun(ast: var Node, env: var Env) = 
+proc doFun(ast: Node, env: var Env): Node = 
   discard eval_ast(newList(ast.seqVal[1 .. <ast.seqVal.high]), env)
-  ast = ast.seqVal[ast.seqVal.high]
+  return ast.seqVal[ast.seqVal.high]
   # Continue loop (TCO)
 
 proc ifFun(ast: Node, env: Env): Node =
@@ -183,8 +173,8 @@ proc eval(ast: Node, env: Env): Node =
       case ast.seqVal[0].stringVal
       of "print-env":   return printEnvFun(env)
       of "def!":        return defExclFun(ast, env)
-      of "let*":        letStarFun(ast, env)
-      of "do":          doFun(ast, env)
+      of "let*":        ast = letStarFun(ast, env)
+      of "do":          ast = doFun(ast, env)
       of "if":          ast = ifFun(ast, env)
       of "fn*":         return fnStarFun(ast, env)
       of "defmacro!":   return defMacroExclFun(ast, env)
