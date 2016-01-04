@@ -83,6 +83,51 @@ proc eval_ast(ast: Node, env: var Env): Node =
         echo "EVAL_AST: literal: " & p.prStr(ast)
       return ast
 
+proc printEnvFun(env: var Env) =
+  var p:Printer
+  echo "Printing environment: $1" % env.name
+  for k, v in env.data.pairs:
+    echo "'$1'\t\t= $2" % [k, p.prStr(v)]
+
+proc defExclFun(ast: var Node, env: var Env): Node =
+  return env.set(ast.seqVal[1].stringVal, eval(ast.seqVal[2], env))
+
+proc letStarFun(ast: var Node, env: var Env) = 
+  var nEnv = newEnv("let*", env)
+  case ast.seqVal[1].kind
+  of List, Vector:
+    for i in countup(0, ast.seqVal[1].seqVal.high, 2):
+      discard nEnv.set(ast.seqVal[1].seqVal[i].stringVal, eval(ast.seqVal[1].seqVal[i+1], nEnv))
+  else: 
+    error("let*: First argument is not a list or vector")
+  ast = ast.seqVal[2]
+  env = nEnv
+  # Continue loop (TCO)
+
+proc doFun(ast: var Node, env: var Env) = 
+  discard eval_ast(newList(ast.seqVal[1 .. <ast.seqVal.high]), env)
+  ast = ast.seqVal[ast.seqVal.high]
+  # Continue loop (TCO)
+
+proc ifFun(ast: var Node, env: var Env) =
+  if eval(ast.seqVal[1], env).falsy:
+    if ast.seqVal.len > 3: 
+      ast = ast.seqVal[3]
+    else: ast = newNil()
+  else: ast = ast.seqVal[2]
+  # Continue loop (TCO)
+
+proc fnStarFun(ast: var Node, env: var Env): Node =
+  var env = env # To avoid "illegal capture" errors
+  var ast = ast # To avoid "illegal capture" errors
+  let fn = proc(args: varargs[Node]): Node =
+    var list = newSeq[Node]()
+    for arg in args:
+      list.add(arg)
+    var newEnv = newEnv("fn*", env, ast.seqVal[1], newList(list))
+    return eval(ast.seqVal[2], newEnv)
+  return newProc(fn, ast = ast.seqVal[2], params = ast.seqVal[1], env = env)
+
 proc eval(ast: Node, env: var Env): Node =
   var p:Printer
   var ast = ast
@@ -99,76 +144,21 @@ proc eval(ast: Node, env: var Env): Node =
       # Assuming NativeProc
       return f.nativeProcVal(el.seqVal[1 .. ^1])
   while true:
-    if ast.kind != List: 
-      return ast.eval_ast(env)
-    let 
-      first = ast.seqVal[0]
-      last = ast.seqVal.high
-    case first.kind
+    if ast.kind != List: return ast.eval_ast(env)
+    case ast.seqVal[0].kind
     of Symbol:
-      case first.stringVal
-      of "print-env":
-        var p:Printer
-        echo "Printing environment: $1" % env.name
-        for k, v in env.data.pairs:
-           echo "'$1'\t\t= $2" % [k, p.prStr(v)]
-      of "def!":
-        let
-          second = ast.seqVal[1]
-          third = ast.seqVal[2]
-        return env.set(second.stringVal, eval(third, env))
-      of "let*":
-        let 
-          second = ast.seqVal[1]
-          third = ast.seqVal[2]
-        var nEnv = newEnv("let*", env)
-        case second.kind
-        of List, Vector:
-          for i in countup(0, second.seqVal.high, 2):
-            discard nEnv.set(second.seqVal[i].stringVal, eval(second.seqVal[i+1], nEnv))
-        else: 
-          error("let*: First argument is not a list or vector")
-        ast = third
-        env = nEnv
-        # Continue loop (TCO)
-      of "do":
-        let el = eval_ast(newList(ast.seqVal[1 .. <last]), env)
-        ast = ast.seqVal[last]
-        # Continue loop (TCO)
-      of "if":
-        let
-          second = ast.seqVal[1]
-          third = ast.seqVal[2]
-          cond = eval(second, env)
-        if cond.falsy:
-          if ast.seqVal.len > 3: 
-            ast = ast.seqVal[3]
-          else: ast = newNil()
-        else: ast = third
-      of "fn*":
-        let 
-          second = ast.seqVal[1]
-          third = ast.seqVal[2]
-        var nEnv = env
-        let fn = proc(args: varargs[Node]): Node =
-          var list = newSeq[Node]()
-          for arg in args:
-            list.add(arg)
-          var newEnv = newEnv("fn*", nEnv, second, newList(list))
-          return eval(third, newEnv)
-        return newProc(fn, ast = third, params = second, env = env)
-      of "eval":
-        let 
-          second = ast.seqVal[1]
-        ast = eval(second, MAINENV)
-      of "quote":
-        return ast.seqVal[1]
-      of "quasiquote":
-        ast = quasiquote(ast.seqVal[1])
-      else:
-        apply()
-    else:
-      apply()
+      case ast.seqVal[0].stringVal
+      of "print-env":   printEnvFun(env)
+      of "def!":        return defExclFun(ast, env)
+      of "let*":        letStarFun(ast, env)
+      of "do":          doFun(ast, env)
+      of "if":          ifFun(ast, env)
+      of "fn*":         return fnStarFun(ast, env)
+      of "eval":        ast = eval(ast.seqVal[1], MAINENV)
+      of "quote":       return ast.seqVal[1]
+      of "quasiquote":  ast = quasiquote(ast.seqVal[1])
+      else: apply()
+    else: apply()
 
 proc rep(env: var Env) = 
   print(eval(read(), env))
