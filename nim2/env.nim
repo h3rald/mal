@@ -74,7 +74,7 @@ proc get*(env: Env, sym: string): Node =
   if res != nil:
     return res.data[sym]
   else:
-    raise newException(UnknownSymbolError, "Symbol '$1' not found." % sym)
+    raise newException(UnknownSymbolError, "'$1' not found" % sym)
 
 ### Main Environment
 

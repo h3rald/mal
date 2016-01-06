@@ -21,6 +21,84 @@ defconst "nil", newNil()
 defun "=", args:
   return newBool(args[0] == args[1])
 
+defun "throw", args:
+  raise (ref LangException)(value: newList(args))
+
+defun "apply", args:
+  let f = args[0]
+  var list = newSeq[Node]()
+  if args.len > 2:
+    for i in 1 .. args.high-1:
+      list.add args[i]
+  list.add args[args.high].seqVal
+  return f.getFun()(list)
+
+defun "map", args:
+  result = newList()
+  for i in 0 .. args[1].seqVal.high:
+    result.seqVal.add args[0].getFun()(args[1].seqVal[i])
+
+### Constructors
+
+defun "symbol", args:
+  return newSymbol(args[0].stringVal)
+
+defun "keyword", args:
+  if args[0].kind == Keyword:
+    return args[0]
+  else:
+    return newKeyword(":" & args[0].stringVal)
+
+defun "list", args:
+  var list = newSeq[Node]()
+  for a in args:
+    list.add(a)
+  return newList(list)
+
+defun "vector", args:
+  var list = newSeq[Node]()
+  for a in args:
+    list.add(a)
+  return newVector(list)
+
+### Predicates
+
+defun "nil?", args:
+  return newBool(args[0] == newNil())
+
+defun "true?", args:
+  return newBool(args[0] == newBool(true))
+
+defun "false?", args:
+  return newBool(args[0] == newBool(false))
+
+defun "symbol?", args:
+  return newBool(args[0].kind == Symbol)
+
+defun "keyword?", args:
+  return newBool(args[0].kind == Keyword)
+
+defun "empty?", args:
+  case args[0].kind
+  of List, Vector:
+    if args[0].seqVal.len == 0:
+      return newBool(true)
+  else:
+    error "empty?: First argument is not a list or vector"
+  return newBool(false)
+
+defun "list?", args:
+  return newBool(args[0].kind == List)
+
+defun "vector?", args:
+  return newBool(args[0].kind == Vector)
+
+defun "sequential?", args:
+  return newBool(args[0].kind in {List, Vector})
+
+defun "map?", args:
+  return newBool(args[0].kind == HashMap)
+
 ### Numeric Functions
 
 defun "<", args:
@@ -48,27 +126,6 @@ defun "/", args:
   return newInt(int(args[0].intVal / args[1].intVal))
 
 ### List/Vector Functions
-
-defun "list", args:
-  var list = newSeq[Node]()
-  for a in args:
-    list.add(a)
-  return newList(list)
-
-defun "list?", args:
-  if args[0].kind == List:
-    return newBool(true)
-  else:
-    return newBool(false)
-
-defun "empty?", args:
-  case args[0].kind
-  of List, Vector:
-    if args[0].seqVal.len == 0:
-      return newBool(true)
-  else:
-    error "empty?: First argument is not a list or vector"
-  return newBool(false)
 
 defun "count", args:
   case args[0].kind:
@@ -134,4 +191,5 @@ defun "debug", args:
   else:
     DEBUG = true
     return newBool(true)
+
 

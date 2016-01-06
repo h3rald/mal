@@ -57,6 +57,9 @@ type
   NoTokensError* = object of Exception
   UnknownSymbolError* = object of Exception
   ParsingError* = object of Exception
+  UnhandledExceptionError* = object of Exception
+  LangException* = object of Exception
+    value*: Node
 
 var
   DEBUG* = false
@@ -79,6 +82,13 @@ proc newList*(nseq: seq[Node]): Node =
   new(result)
   result.kind = List
   result.seqVal = nseq
+
+proc newList*(args: varargs[Node]): Node =
+  new(result)
+  result.kind = List
+  result.seqVal = newSeq[Node]()
+  for arg in args:
+    result.seqVal.add arg
 
 proc newNil*(): Node = 
   new(result)
@@ -213,3 +223,8 @@ proc falsy*(n: Node): bool =
 
 proc isPair*(n: Node): bool =
   return n.kind in {List, Vector} and n.seqVal.len > 0
+
+proc getFun*(x: Node): NodeProc =
+  if x.kind == NativeProc: result = x.nativeProcVal
+  elif x.kind == Proc: result = x.procVal.fun
+  else: raise newException(ValueError, "no function")
