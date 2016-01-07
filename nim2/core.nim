@@ -1,6 +1,7 @@
 import
   sequtils,
-  strutils
+  strutils,
+  tables
 
 import
   types,
@@ -47,7 +48,7 @@ defun "keyword", args:
   if args[0].kind == Keyword:
     return args[0]
   else:
-    return newKeyword(":" & args[0].stringVal)
+    return newKeyword(args[0].stringVal)
 
 defun "list", args:
   var list = newSeq[Node]()
@@ -60,6 +61,15 @@ defun "vector", args:
   for a in args:
     list.add(a)
   return newVector(list)
+
+defun "hash-map", args:
+  var hash = initTable[string, Node]()
+  for i in countup(0, args.high, 2):
+    if args[i].kind == Keyword:
+      hash['\xff' & args[i].keyVal] = args[i+1]
+    else:
+      hash[args[i].stringVal] = args[i+1]
+  return newHashMap(hash)
 
 ### Predicates
 
@@ -98,6 +108,15 @@ defun "sequential?", args:
 
 defun "map?", args:
   return newBool(args[0].kind == HashMap)
+
+defun "contains?", args:
+  if args[0] == newNil():
+    return newBool(false)
+  if args[1].kind == String:
+    return newBool(args[0].hashVal.hasKey(args[1].stringVal))
+  elif args[1].kind == Keyword:
+    return newBool(args[0].hashVal.hasKey('\xff' & args[1].keyVal))
+  return newBool(false)
 
 ### Numeric Functions
 
@@ -159,6 +178,55 @@ defun "rest", args:
   if args[0].seqVal.len == 0:
     return newList(args[0].seqVal)
   return newList(args[0].seqVal[1 .. ^1])
+
+### HashMap Functions
+
+defun "assoc", args:
+  var hash = args[0].hashVal
+  for i in countup(1, args.high, 2):
+    if args[i].kind == String:
+      hash[args[i].stringVal] = args[i+1]
+    else:
+      hash['\xff' & args[i].keyVal] = args[i+1]
+  return newHashMap(hash)
+
+defun "dissoc", args:
+  var hash = args[0].hashVal
+  for i in 1 .. args.high:
+    if args[i].kind == String:
+      hash.del(args[i].stringVal)
+    else:
+      hash.del('\xff' & args[i].keyVal)
+  return newHashMap(hash)
+
+defun "get", args:
+  if args[0] == newNil():
+    return newNil()
+  var hash = args[0].hashVal
+  if args[1].kind == String and hash.hasKey(args[1].stringVal):
+    return hash[args[1].stringVal]
+  elif args[1].kind == Keyword and hash.hasKey('\xff' & args[1].keyVal):
+    return hash['\xff' & args[1].keyVal]
+  else:
+    return newNil()
+
+defun "keys", args:
+  let hash = args[0].hashVal
+  var list = newSeq[Node]()
+  for i in hash.keys:
+    if i[0] == '\xff':
+      list.add newKeyword(i[1 .. i.high])
+    else:
+      list.add newString(i)
+  return newList(list)
+
+defun "vals", args:
+  let hash = args[0].hashVal
+  var list = newSeq[Node]()
+  for i in hash.values:
+    list.add i
+  return newList(list)
+
 
 ### String Functions
 

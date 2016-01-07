@@ -21,13 +21,11 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result &= "{"
       var count = 0
       for key, value in form.hashVal.pairs:
-        var n: Node
-        if key[0..3] == "str:":
-          n = newString(key[4..key.len-1])
-        else:
-          n = newKeyword(key[4..key.len-1])
         count.inc
-        result &= p.prStr(n, printReadably)
+        if key[0] == '\xff':
+          result &= p.prStr(newKeyword(key[1 .. key.high]), printReadably)
+        else:
+          result &= p.prStr(newString(key), printReadably)
         result &= " "
         result &= p.prStr(value, printReadably)
         if count < form.hashVal.len:
@@ -41,7 +39,7 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       else: 
         result = "false"
     of Keyword:
-      result = "$1" % form.keyVal
+      result = ":$1" % form.keyVal
     of Nil:
       result = "nil"
     of String:

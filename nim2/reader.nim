@@ -118,11 +118,11 @@ proc readHashMap*(r: var Reader): Node =
     discard r.next()
     var success = false
     if key.kind == String or key.kind == Keyword:
-      var hashkey:string = key.kindName[0..2] & ":"
+      var hashkey:string 
       if key.kind == String:
-        hashkey &= key.stringVal
+        hashkey = key.stringVal
       else:
-        hashkey &= key.keyVal
+        hashkey = '\xff' & key.keyVal
       hash.add(hashkey, r.readForm())
       discard r.next()
       try:
