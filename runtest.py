@@ -46,17 +46,11 @@ parser.add_argument('--pre-eval', default=None, type=str,
 parser.add_argument('--no-pty', action='store_true',
         help="Use direct pipes instead of pseudo-tty")
 parser.add_argument('--log-file', type=str,
-<<<<<<< HEAD
-        help="Write all test interaction the named file")
-parser.add_argument('--soft', action='store_true',
-        help="Report but do not fail tests after ';>>> soft=True'")
-=======
         help="Write messages to the named file in addition the screen")
 parser.add_argument('--debug-file', type=str,
         help="Write all test interaction the named file")
 parser.add_argument('--hard', action='store_true',
         help="Turn soft tests following a ';>>> soft=True' into hard failures")
->>>>>>> upstream/master
 
 parser.add_argument('test_file', type=argparse.FileType('r'),
         help="a test file formatted as with mal test data")
@@ -118,13 +112,8 @@ class Runner():
             if self.stdout in outs:
                 new_data = self.stdout.read(1)
                 new_data = new_data.decode("utf-8") if IS_PY_3 else new_data
-<<<<<<< HEAD
-                #print "new_data: '%s'" % new_data
-                self.log(new_data)
-=======
                 #print("new_data: '%s'" % new_data)
                 debug(new_data)
->>>>>>> upstream/master
                 if self.no_pty:
                     self.buf += new_data.replace("\n", "\r\n")
                 else:
@@ -162,16 +151,10 @@ class Runner():
             self.p = None
 
 class TestReader:
-<<<<<<< HEAD
-    def __init__(self, test_file):
-        self.line_num = 0
-        self.data = test_file.read().split('\n')
-=======
     def __init__(self, test_file, print=print):
         self.line_num = 0
         self.data = test_file.read().split('\n')
         self.print = print
->>>>>>> upstream/master
         self.soft = False
 
     def next(self):
@@ -187,11 +170,7 @@ class TestReader:
             elif line[0:3] == ";;;":       # ignore comment
                 continue
             elif line[0:2] == ";;":        # output comment
-<<<<<<< HEAD
-                print(line[3:])
-=======
                 log(line[3:])
->>>>>>> upstream/master
                 continue
             elif line[0:5] == ";>>> ":     # settings/commands
                 settings = {}
@@ -199,11 +178,7 @@ class TestReader:
                 if 'soft' in settings: self.soft = True
                 continue
             elif line[0:1] == ";":         # unexpected comment
-<<<<<<< HEAD
-                print("Test data error at line %d:\n%s" % (self.line_num, line))
-=======
                 log("Test data error at line %d:\n%s" % (self.line_num, line))
->>>>>>> upstream/master
                 return None
             self.form = line   # the line is a form to send
 
@@ -211,11 +186,7 @@ class TestReader:
             while self.data:
                 line = self.data[0]
                 if line[0:3] == ";=>":
-<<<<<<< HEAD
-                    self.ret = line[3:].replace('\\r', '\r').replace('\\n', '\n')
-=======
                     self.ret = line[3:]
->>>>>>> upstream/master
                     self.line_num += 1
                     self.data.pop(0)
                     break
@@ -229,15 +200,6 @@ class TestReader:
             if self.ret: break
 
         return self.form
-<<<<<<< HEAD
-
-
-args = parser.parse_args(sys.argv[1:])
-
-if args.rundir: os.chdir(args.rundir)
-
-r = Runner(args.mal_cmd, no_pty=args.no_pty, log_file=args.log_file)
-=======
 
 args = parser.parse_args(sys.argv[1:])
 # Workaround argparse issue with two '--' on command line
@@ -250,7 +212,6 @@ if args.log_file:   log_file   = open(args.log_file, "a")
 if args.debug_file: debug_file = open(args.debug_file, "a")
 
 r = Runner(args.mal_cmd, no_pty=args.no_pty)
->>>>>>> upstream/master
 t = TestReader(args.test_file)
 
 
@@ -261,13 +222,8 @@ def assert_prompt(runner, prompts, timeout):
         if header:
             log("Started with:\n%s" % header)
     else:
-<<<<<<< HEAD
-        print("Did not one of following prompt(s): %s" % repr(prompts))
-        print("    Got      : %s" % repr(r.buf))
-=======
         log("Did not one of following prompt(s): %s" % repr(prompts))
         log("    Got      : %s" % repr(r.buf))
->>>>>>> upstream/master
         sys.exit(1)
 
 
@@ -284,17 +240,10 @@ test_cnt = 0
 pass_cnt = 0
 fail_cnt = 0
 soft_fail_cnt = 0
-<<<<<<< HEAD
-
-while t.next():
-    sys.stdout.write("TEST: %s -> [%s,%s]" % (t.form, repr(t.out), t.ret))
-    sys.stdout.flush()
-=======
 failures = []
 
 while t.next():
     log("TEST: %s -> [%s,%s]" % (t.form, repr(t.out), t.ret), end='')
->>>>>>> upstream/master
 
     # The repeated form is to get around an occasional OS X issue
     # where the form is repeated.
@@ -310,18 +259,6 @@ while t.next():
                                 timeout=args.test_timeout)
         #print "%s,%s,%s" % (idx, repr(p.before), repr(p.after))
         if t.ret == "*" or res in expected:
-<<<<<<< HEAD
-            print(" -> SUCCESS")
-        else:
-            if args.soft and t.soft:
-                print(" -> SOFT FAIL (line %d):" % t.line_num)
-                soft_fail_cnt += 1
-            else:
-                print(" -> FAIL (line %d):" % t.line_num)
-                fail_cnt += 1
-            print("    Expected : %s" % repr(expected))
-            print("    Got      : %s" % repr(res))
-=======
             log(" -> SUCCESS")
             pass_cnt += 1
         else:
@@ -339,17 +276,12 @@ while t.next():
     Expected : %s
     Got      : %s""" % (fail_type, t.line_num, t.form, repr(t.out), t.ret, repr(expected[0]), repr(res))
             failures.append(failed_test)
->>>>>>> upstream/master
     except:
         _, exc, _ = sys.exc_info()
         log("\nException: %s" % repr(exc))
         log("Output before exception:\n%s" % r.buf)
         sys.exit(1)
 
-<<<<<<< HEAD
-if soft_fail_cnt > 0:
-    print("SOFT FAILURES: %d" % soft_fail_cnt)
-=======
 if len(failures) > 0:
     log("\nFAILURES:")
     for f in failures:
@@ -367,7 +299,6 @@ log(results)
 
 debug("\n") # add some separate to debug log
 
->>>>>>> upstream/master
 if fail_cnt > 0:
     sys.exit(1)
 sys.exit(0)

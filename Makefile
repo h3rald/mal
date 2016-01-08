@@ -22,15 +22,9 @@ mal_TEST_OPTS = --start-timeout 60 --test-timeout 120
 # Settings
 #
 
-<<<<<<< HEAD
-IMPLS = bash c clojure coffee cpp crystal cs erlang factor forth go groovy \
-	haskell java julia js lua make mal ocaml matlab miniMAL nim \
-	perl php ps python r racket rpython ruby rust scala swift vb guile nim2
-=======
 IMPLS = awk bash c d clojure coffee cpp crystal cs erlang elixir es6 factor forth fsharp go groovy \
 	guile haskell java julia js kotlin lua make mal ocaml matlab miniMAL nim \
-	perl php ps python r racket rpython ruby rust scala swift tcl vb vimscript
->>>>>>> upstream/master
+	perl php ps python r racket rpython ruby rust scala swift tcl vb vimscript nim2
 
 step0 = step0_repl
 step1 = step1_read_print
@@ -235,15 +229,15 @@ ALL_REPL = $(strip $(sort \
 # Build rules
 #
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
 # Build a program in 'c' directory
-c/%:
-	$(MAKE) -C $(dir $(@)) $(notdir $(@))
+#c/%:
+#	$(MAKE) -C $(dir $(@)) $(notdir $(@))
 
 # Build a program in 'cpp' directory
-cpp/%:
-	$(MAKE) -C $(dir $(@)) $(notdir $(@))
-=======
+#cpp/%:
+#	$(MAKE) -C $(dir $(@)) $(notdir $(@))
+#=======
 # Build a program in an implementation directory
 # Make sure we always try and build first because the dependencies are
 # encoded in the implementation Makefile not here
@@ -251,7 +245,7 @@ cpp/%:
 $(foreach i,$(DO_IMPLS),$(foreach s,$(STEPS),$(call $(i)_STEP_TO_PROG,$(s)))):
 	$(foreach impl,$(word 1,$(subst /, ,$(@))),\
 	  $(MAKE) -C $(impl) $(subst $(impl)/,,$(@)))
->>>>>>> upstream/master
+#>>>>>>> upstream/master
 
 # Allow test, test^STEP, test^IMPL, and test^IMPL^STEP
 .SECONDEXPANSION:
