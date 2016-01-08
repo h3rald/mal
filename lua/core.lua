@@ -3,6 +3,7 @@ local types = require('types')
 local reader = require('reader')
 local printer = require('printer')
 local readline = require('readline')
+local socket = require('socket')
 
 local Nil, List, _pr_str = types.Nil, types.List, printer._pr_str
 
@@ -159,6 +160,20 @@ function swap_BANG(atm,f,...)
     return atm.val
 end
 
+local function conj(obj, ...)
+    local new_obj = types.copy(obj)
+    if types._list_Q(new_obj) then
+        for i, v in ipairs(arg) do
+            table.insert(new_obj, 1, v)
+        end
+    else
+        for i, v in ipairs(arg) do
+            table.insert(new_obj, v)
+        end
+    end
+    return new_obj
+end
+
 M.ns = {
     ['='] =  types._equal_Q,
     throw = types.throw,
@@ -187,8 +202,7 @@ M.ns = {
     ['-'] =  function(a,b) return a-b end,
     ['*'] =  function(a,b) return a*b end,
     ['/'] =  function(a,b) return math.floor(a/b) end,
-    -- TODO: get actual milliseconds
-    ['time-ms'] = function() return os.time() * 1000 end,
+    ['time-ms'] = function() return math.floor(socket.gettime() * 1000) end,
 
     list = function(...) return List:new(arg) end,
     ['list?'] = function(a) return types._list_Q(a) end,
@@ -213,7 +227,7 @@ M.ns = {
     count =  function(a) return #a end,
     apply = apply,
     map = map,
-    conj = function(...) return Nil end,
+    conj = conj,
 
     meta = meta,
     ['with-meta'] = with_meta,
