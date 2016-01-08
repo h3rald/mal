@@ -17,6 +17,8 @@ defconst "false", newBool(false)
 
 defconst "nil", newNil()
 
+defconst "*host-language*", newString("mal")
+
 ### Functions working with all types
 
 defun "=", args:
@@ -31,15 +33,18 @@ defun "with-meta", args:
   result.meta = args[1]
 
 defun "meta", args:
-  if args[0].meta != nil:
-    return args[0].meta
-  else:
+  if args[0].meta.isNil:
     return newNil()
+  else:
+    return args[0].meta
 
 defun "deref", args:
   return args[0].atomVal
 
 ### Constructors
+
+defun "atom", args:
+  return newAtom(args[0])
 
 defun "symbol", args:
   return newSymbol(args[0].stringVal)
@@ -72,6 +77,9 @@ defun "hash-map", args:
   return newHashMap(hash)
 
 ### Predicates
+
+defun "atom?", args:
+  return newBool(args[0].kind == Atom)
 
 defun "nil?", args:
   return newBool(args[0] == newNil())
@@ -191,6 +199,20 @@ defun "rest", args:
     return newList(args[0].seqVal)
   return newList(args[0].seqVal[1 .. ^1])
 
+defun "conj", args:
+  var list = newSeq[Node]()
+  if args[0].kind == List:
+    for i in countdown(args.high, 1):
+      list.add args[i]
+    list.add args[0].seqVal
+    result = newList(list)
+  else:
+    list.add args[0].seqVal
+    for i in 1 .. args.high:
+      list.add args[i]
+    result = newVector(list)
+  result.meta = args[0].meta
+
 ### HashMap Functions
 
 defun "assoc", args:
@@ -253,6 +275,20 @@ defun "println", args:
 
 defun "slurp", args:
   return newString(readFile(args[0].stringVal))
+
+### Atom Functions
+
+defun "reset!", args:
+  args[0].atomVal = args[1]
+  return args[1]
+
+defun "swap!", args:
+  var nArgs = newSeq[Node]()
+  nArgs.add args[0].atomVal
+  for i in 2 .. args.high:
+    nArgs.add args[i]
+  args[0].atomVal = args[1].getFun()(nArgs)
+  return args[0].atomVal
 
 ### Other Functions
 

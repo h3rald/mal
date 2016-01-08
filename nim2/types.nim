@@ -77,6 +77,11 @@ proc error*(str: string) =
 proc `position=`*(r: var Reader, value: int) {.inline.} =
   r.pos = value
 
+proc newAtom*(n: Node): Node =
+  new(result)
+  result.kind = Atom
+  result.atomVal = n
+
 proc newList*(nseq: seq[Node]): Node =
   new(result)
   result.kind = List

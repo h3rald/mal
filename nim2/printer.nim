@@ -51,7 +51,7 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
     of Symbol:
       result = form.stringVal
     of Atom:
-      result = p.prStr(form.atomVal)
+      result = "(atom " & p.prStr(form.atomVal) & ")"
     of NativeProc:
       result = "#<native-function>"
     of Proc:

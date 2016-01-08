@@ -21,7 +21,7 @@ var
   p: Printer
 
 
-proc read(prompt = PROMPT): Node =
+proc read*(prompt = PROMPT): Node =
   var line = readline(prompt)
   historyAdd(line)
   return line.readStr()
@@ -227,7 +227,7 @@ for kind, key, val in getopt():
           discard
     of cmdArgument:
       if FILE == nil:
-        FILE = val
+        FILE = key
       else:
         ARGV.add(newString(val))
     else:
@@ -238,14 +238,33 @@ defconst "*ARGV*", newList(ARGV)
 defun "eval", args:
   return eval(args[0], MAINENV)
 
+defun "readline", args:
+  if args.len > 0:
+    var line = readline(args[0].stringVal)
+    historyAdd(line)
+    return newString(line)
+  else:
+    var line = readline(PROMPT)
+    historyAdd(line)
+    return newString(line)
 
 ### REPL
 
-while true:
+if FILE.isNil:
+  while true:
+    try:
+      rep(MAINENV)
+    except NoTokensError:
+      continue
+    except:
+      echo getCurrentExceptionMsg()
+      echo getCurrentException().getStackTrace()
+else:
   try:
-    rep(MAINENV)
+    print(eval(readStr("(load-file \"" & FILE & "\")" % FILE), MAINENV))
   except NoTokensError:
-    continue
+    discard
   except:
     echo getCurrentExceptionMsg()
     echo getCurrentException().getStackTrace()
+
