@@ -28,6 +28,7 @@ type
     env*: Env
     isMacro*: bool
   NodeObj* = object
+    meta*: Node
     case kind*: NodeKind
     of Proc:
       procVal*: ProcType
@@ -40,7 +41,7 @@ type
     of Int:    
       intVal*:    int
     of Atom:   
-      atomVal*: string
+      atomVal*: Node
     of HashMap: 
       hashVal*: NodeHash
     of Bool:

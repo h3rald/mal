@@ -25,19 +25,19 @@ defun "=", args:
 defun "throw", args:
   raise (ref LangException)(value: newList(args))
 
-defun "apply", args:
-  let f = args[0]
-  var list = newSeq[Node]()
-  if args.len > 2:
-    for i in 1 .. args.high-1:
-      list.add args[i]
-  list.add args[args.high].seqVal
-  return f.getFun()(list)
+defun "with-meta", args:
+  new(result)
+  result[] = args[0][]
+  result.meta = args[1]
 
-defun "map", args:
-  result = newList()
-  for i in 0 .. args[1].seqVal.high:
-    result.seqVal.add args[0].getFun()(args[1].seqVal[i])
+defun "meta", args:
+  if args[0].meta != nil:
+    return args[0].meta
+  else:
+    return newNil()
+
+defun "deref", args:
+  return args[0].atomVal
 
 ### Constructors
 
@@ -115,6 +115,20 @@ defun "contains?", args:
   elif args[1].kind in {String, Keyword}:
     return newBool(args[0].hashVal.hasKey(args[1].keyval))
   return newBool(false)
+
+defun "apply", args:
+  let f = args[0]
+  var list = newSeq[Node]()
+  if args.len > 2:
+    for i in 1 .. args.high-1:
+      list.add args[i]
+  list.add args[args.high].seqVal
+  return f.getFun()(list)
+
+defun "map", args:
+  result = newList()
+  for i in 0 .. args[1].seqVal.high:
+    result.seqVal.add args[0].getFun()(args[1].seqVal[i])
 
 ### Numeric Functions
 
