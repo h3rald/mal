@@ -117,13 +117,8 @@ proc readHashMap*(r: var Reader): Node =
     key = r.readAtom()
     discard r.next()
     var success = false
-    if key.kind == String or key.kind == Keyword:
-      var hashkey:string 
-      if key.kind == String:
-        hashkey = key.stringVal
-      else:
-        hashkey = '\xff' & key.keyVal
-      hash.add(hashkey, r.readForm())
+    if key.kind in {String, Keyword}:
+      hash.add(key.keyval, r.readForm())
       discard r.next()
       try:
         discard r.peek()

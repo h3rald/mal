@@ -66,7 +66,7 @@ defun "hash-map", args:
   var hash = initTable[string, Node]()
   for i in countup(0, args.high, 2):
     if args[i].kind == Keyword:
-      hash['\xff' & args[i].keyVal] = args[i+1]
+      hash[args[i].keyval] = args[i+1]
     else:
       hash[args[i].stringVal] = args[i+1]
   return newHashMap(hash)
@@ -112,10 +112,8 @@ defun "map?", args:
 defun "contains?", args:
   if args[0] == newNil():
     return newBool(false)
-  if args[1].kind == String:
-    return newBool(args[0].hashVal.hasKey(args[1].stringVal))
-  elif args[1].kind == Keyword:
-    return newBool(args[0].hashVal.hasKey('\xff' & args[1].keyVal))
+  elif args[1].kind in {String, Keyword}:
+    return newBool(args[0].hashVal.hasKey(args[1].keyval))
   return newBool(false)
 
 ### Numeric Functions
@@ -184,29 +182,21 @@ defun "rest", args:
 defun "assoc", args:
   var hash = args[0].hashVal
   for i in countup(1, args.high, 2):
-    if args[i].kind == String:
-      hash[args[i].stringVal] = args[i+1]
-    else:
-      hash['\xff' & args[i].keyVal] = args[i+1]
+    hash[args[i].keyval] = args[i+1]
   return newHashMap(hash)
 
 defun "dissoc", args:
   var hash = args[0].hashVal
   for i in 1 .. args.high:
-    if args[i].kind == String:
-      hash.del(args[i].stringVal)
-    else:
-      hash.del('\xff' & args[i].keyVal)
+    hash.del(args[i].keyval)
   return newHashMap(hash)
 
 defun "get", args:
   if args[0] == newNil():
     return newNil()
   var hash = args[0].hashVal
-  if args[1].kind == String and hash.hasKey(args[1].stringVal):
-    return hash[args[1].stringVal]
-  elif args[1].kind == Keyword and hash.hasKey('\xff' & args[1].keyVal):
-    return hash['\xff' & args[1].keyVal]
+  if args[1].kind in {String, Keyword} and hash.hasKey(args[1].keyval):
+    return hash[args[1].keyval]
   else:
     return newNil()
 

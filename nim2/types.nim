@@ -35,14 +35,12 @@ type
       nativeProcVal*: NodeProc
     of List, Vector:   
       seqVal*:   seq[Node]
-    of String, Symbol: 
+    of String, Symbol, Keyword: 
       stringVal*: string
     of Int:    
       intVal*:    int
     of Atom:   
       atomVal*: string
-    of Keyword: 
-      keyVal*: string
     of HashMap: 
       hashVal*: NodeHash
     of Bool:
@@ -130,7 +128,7 @@ proc newString*(s: string): Node =
 proc newKeyword*(s: string): Node = 
   new(result)
   result.kind = Keyword
-  result.keyVal = s
+  result.stringVal = '\xff' & s
 
 proc newNativeProc*(f: NodeProc): Node = 
   new(result)
@@ -201,10 +199,8 @@ proc `==`*(a, b: Node): bool =
       return a.nativeProcVal == b.nativeProcVal
     of Int:
       return a.intVal == b.intVal
-    of String, Symbol:
+    of String, Symbol, Keyword:
       return a.stringVal == b.stringVal
-    of Keyword:
-      return a.keyVal == b.keyVal
     of Bool:
       return a.boolVal == b.boolVal
     of HashMap:
@@ -228,3 +224,16 @@ proc getFun*(x: Node): NodeProc =
   if x.kind == NativeProc: result = x.nativeProcVal
   elif x.kind == Proc: result = x.procVal.fun
   else: raise newException(ValueError, "no function")
+
+proc keyval*(s: Node): string =
+  if s.kind == Keyword:
+    return '\xff' & s.stringVal[1 .. s.stringVal.high]
+  else:
+    return s.stringVal
+
+proc keyrep*(s: Node): string =
+  if s.stringVal[0] == '\xff':
+    return ':' & s.stringVal[1 .. s.stringVal.high]
+  else:
+    return s.stringVal
+

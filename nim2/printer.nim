@@ -39,7 +39,7 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       else: 
         result = "false"
     of Keyword:
-      result = ":$1" % form.keyVal
+      result = form.keyrep
     of Nil:
       result = "nil"
     of String:
