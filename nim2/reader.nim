@@ -52,7 +52,7 @@ proc peek*(r: Reader): string =
 
 proc next*(r: var Reader): string =
   result = r.tokens[r.pos]
-  r.position = r.pos + 1
+  r.pos = r.pos + 1
 
 proc readAtom*(r: var Reader): Node =
   let token = r.peek()
@@ -128,7 +128,7 @@ proc readHashMap*(r: var Reader): Node =
       except:
         parsingError UNMATCHED_BRACE
     else:
-      parsingError INVALID_HASHMAP_KEY & " (got: '$value' -- $type)" % ["value", p.prStr(key), "type", key.kindName]
+      parsingError INVALID_HASHMAP_KEY & " - got: '$value' ($type)" % ["value", p.prStr(key), "type", key.kindName]
   return newhashMap(hash)
 
 proc readForm*(r: var Reader): Node =

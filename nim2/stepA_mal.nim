@@ -13,9 +13,6 @@ import
   env, 
   core
 
-const
-  PROMPT = "user> "
-
 var 
   r: Reader
   p: Printer
@@ -203,6 +200,9 @@ proc eval(ast: Node, env: Env): Node =
       else: apply()
     else: apply()
 
+defun "eval", args:
+  return eval(args[0], MAINENV)
+
 proc defnative*(s: string) =
   discard eval(readStr(s), MAINENV)
 
@@ -236,19 +236,6 @@ for kind, key, val in getopt():
       discard
 
 defconst "*ARGV*", newList(ARGV)
-
-defun "eval", args:
-  return eval(args[0], MAINENV)
-
-defun "readline", args:
-  if args.len > 0:
-    var line = readline(args[0].stringVal)
-    historyAdd(line)
-    return newString(line)
-  else:
-    var line = readline(PROMPT)
-    historyAdd(line)
-    return newString(line)
 
 ### REPL
 

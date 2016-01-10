@@ -64,6 +64,9 @@ type
 var
   DEBUG* = false
 
+const
+  PROMPT* = "user> "
+
 template dbg*(x: stmt) = 
   if DEBUG:
     x
@@ -85,9 +88,6 @@ proc noTokensError*() =
 
 proc incorrectValueError*(str: string) =
   raise newException(IncorrectValueError, str)
-
-proc `position=`*(r: var Reader, value: int) {.inline.} =
-  r.pos = value
 
 proc newAtom*(n: Node): Node =
   new(result)
