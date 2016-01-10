@@ -109,7 +109,7 @@ proc letStarFun(ast: Node, env: var Env): Node =
     for i in countup(0, ast.seqVal[1].seqVal.high, 2):
       discard nEnv.set(ast.seqVal[1].seqVal[i].keyval, eval(ast.seqVal[1].seqVal[i+1], nEnv))
   else: 
-    error("let*: First argument is not a list or vector")
+    incorrectValueError "let*: First argument is not a list or vector"
   env = nEnv
   return ast.seqVal[2]
   # Continue loop (TCO)

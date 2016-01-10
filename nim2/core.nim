@@ -12,12 +12,6 @@ import
 
 ### Constants
 
-defconst "true", newBool(true)
-
-defconst "false", newBool(false)
-
-defconst "nil", newNil()
-
 defconst "*host-language*", newString("nim2")
 
 ### Functions working with all types
@@ -106,7 +100,7 @@ defun "empty?", args:
     if args[0].seqVal.len == 0:
       return newBool(true)
   else:
-    error "empty?: First argument is not a list or vector"
+    incorrectValueError "empty?: First argument is not a list or vector"
   return newBool(false)
 
 defun "list?", args:
@@ -181,7 +175,7 @@ defun "count", args:
   of List, Vector:
     return newInt(args[0].seqVal.len)
   else:
-    error "count: First argument is not a list or vector"
+    incorrectValueError "count: First argument is not a list or vector"
 
 defun "cons", args:
   var list = newSeq[Node]()
@@ -198,7 +192,7 @@ defun "nth", args:
   let i = args[1].intVal
   let list = args[0].seqVal
   if i >= list.len:
-    raise newException(Exception, "nth - Index out of bounds")
+    incorrectValueError "nth: Index out of bounds"
   return args[0].seqVal[args[1].intVal]
 
 defun "first", args:
@@ -314,5 +308,3 @@ defun "debug", args:
   else:
     DEBUG = true
     return newBool(true)
-
-

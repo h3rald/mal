@@ -42,47 +42,6 @@ proc get*(env: Env, sym: string): Node =
   else:
     raise newException(UnknownSymbolError, "'$1' not found" % sym)
 
-
-#proc newEnv(nBinds, nExprs: Node): Env =
-#  var p:Printer
-#  new(result)
-#  result.data = initTable[string, Node]()
-#  result.name = "closure"
-#  var binds = newSeq[Node]()
-#  var exprs = newSeq[Node]()
-#  if nBinds.kind in {List, Vector}:
-#    binds = nBinds.seqVal
-#  if nExprs.kind in {List, Vector}:
-#    exprs = nExprs.seqVal
-#  dbg:
-#    echo "binds($1) -> exprs($2)" % [$binds.len, $exprs.len]
-#  for i in 0..binds.len-1:
-#    if binds[i].stringVal == "&": # Clojure-style variadic operator
-#      if exprs.len == 0:
-#        discard result.set(binds[i+1].stringVal, newList(exprs))
-#      else:
-#        discard result.set(binds[i+1].stringVal, newList(exprs[i .. ^1]))
-#      break
-#    else:
-#      discard result.set(binds[i].stringVal, exprs[i])
-#
-#proc newEnv*(name: string): Env =
-#  result = newEnv(nBinds = newNil(), nExprs = newNil())
-#  result.name = name
-#
-#proc newEnv*(name: string, outer: Env): Env =
-#  result = newEnv(nBinds = newNil(), nExprs = newNil())
-#  result.name = name
-#  result.outer = outer
-#
-#proc newEnv*(name: string, outer: Env, binds, exprs: Node): Env =
-#  result = newEnv(binds, exprs)
-#  result.name = name
-#  result.outer = outer
-#
-#
-### Main Environment
-
 var MAINENV* = newEnv()
 
 proc defineFunction(sym: string, p: NodeProc) =

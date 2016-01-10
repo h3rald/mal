@@ -35,7 +35,7 @@ proc tokenizer(str: string): seq[string] =
     s = s.substr(s.find(token) + token.len, s.len-1)
     matches[0] = nil
   if token.len == 0:
-    error UNMATCHED_DOUBLE_QUOTE
+    parsingError UNMATCHED_DOUBLE_QUOTE
     
 proc readForm*(r: var Reader): Node
 
@@ -44,7 +44,7 @@ proc readStr*(str: string): Node =
   r.tokens = str.tokenizer()
   r.pos = 0
   if r.tokens.len == 0:
-    raise newException(NoTokensError, "No tokens to process")
+    noTokensError()
   return r.readForm()
 
 proc peek*(r: Reader): string =
@@ -76,16 +76,16 @@ proc readList*(r: var Reader): Node =
   try:
     discard r.peek()
   except:
-    error UNMATCHED_PAREN
+    parsingError UNMATCHED_PAREN
   while r.peek() != ")":
     list.add r.readForm()
     discard r.next()
     if r.tokens.len == r.pos:
-      error UNMATCHED_PAREN
+      parsingError UNMATCHED_PAREN
     try:
       discard r.peek()
     except:
-      error UNMATCHED_PAREN
+      parsingError UNMATCHED_PAREN
   return newList(list)
 
 proc readVector*(r: var Reader): Node = 
@@ -93,17 +93,17 @@ proc readVector*(r: var Reader): Node =
   try:
     discard r.peek()
   except:
-    error UNMATCHED_BRACKET
+    parsingError UNMATCHED_BRACKET
     return
   while r.peek() != "]":
     vector.add r.readForm()
     discard r.next()
     if r.tokens.len == r.pos:
-      error UNMATCHED_PAREN
+      parsingError UNMATCHED_PAREN
     try:
       discard r.peek()
     except:
-      error UNMATCHED_BRACKET
+      parsingError UNMATCHED_BRACKET
   return newvector(vector)
 
 proc readHashMap*(r: var Reader): Node = 
@@ -112,7 +112,7 @@ proc readHashMap*(r: var Reader): Node =
   try:
     discard r.peek()
   except:
-    error UNMATCHED_BRACE
+    parsingError UNMATCHED_BRACE
   var key: Node
   while r.peek() != "}":
     key = r.readAtom()
@@ -122,20 +122,17 @@ proc readHashMap*(r: var Reader): Node =
       hash.add(key.keyval, r.readForm())
       discard r.next()
       if r.tokens.len == r.pos:
-        error UNMATCHED_PAREN
+        parsingError UNMATCHED_PAREN
       try:
         discard r.peek()
       except:
-        error UNMATCHED_BRACE
+        parsingError UNMATCHED_BRACE
     else:
-      error INVALID_HASHMAP_KEY & " (got: '$value' -- $type)" % ["value", p.prStr(key), "type", key.kindName]
+      parsingError INVALID_HASHMAP_KEY & " (got: '$value' -- $type)" % ["value", p.prStr(key), "type", key.kindName]
   return newhashMap(hash)
 
 proc readForm*(r: var Reader): Node =
   var p: Printer
-  if failure:
-    failure = false
-    return
   case r.peek():
     of "{":
       discard r.next() 
@@ -161,9 +158,6 @@ proc readForm*(r: var Reader): Node =
     of "@":
       discard r.next()
       let sym = r.readForm()
-      #if sym.kind != Symbol:
-      #  error "Cannot derefence $1: $2" % [sym.kindName, p.prStr(sym)]
-      #  return
       result = newList(@[newSymbol("deref"), sym])
     of "^":
       discard r.next()
@@ -174,6 +168,6 @@ proc readForm*(r: var Reader): Node =
         let v = r.readForm()
         result = newList(@[newSymbol("with-meta"), v, h])
       else:
-        error "A HashMap is required by the with-meta macro"
+        incorrectValueError "A HashMap is required by the with-meta macro"
     else:
       result = r.readAtom()

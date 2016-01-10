@@ -57,19 +57,34 @@ type
   UnknownSymbolError* = object of Exception
   ParsingError* = object of Exception
   UnhandledExceptionError* = object of Exception
+  IncorrectValueError* = object of Exception
   LangException* = object of Exception
     value*: Node
 
 var
   DEBUG* = false
-  failure* = false
 
 template dbg*(x: stmt) = 
   if DEBUG:
     x
 
-proc error*(str: string) =
-  raise newException(Exception, str)
+proc parsingError*(str: string) =
+  raise newException(ParsingError, str)
+
+proc unhandledExceptionError*(str: string) =
+  raise newException(UnhandledExceptionError, str)
+
+proc langExceptionError*(str: string) =
+  raise newException(LangException, str)
+
+proc unknownSymbolError*(sym: string) = 
+  raise newException(UnknownSymbolError, "'$1' not found" % sym)
+
+proc noTokensError*() = 
+  raise newException(NoTokensError, "No tokens to process")
+
+proc incorrectValueError*(str: string) =
+  raise newException(IncorrectValueError, str)
 
 proc `position=`*(r: var Reader, value: int) {.inline.} =
   r.pos = value
