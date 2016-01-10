@@ -1,7 +1,8 @@
 import
   sequtils,
   strutils,
-  tables
+  tables,
+  times
 
 import
   types,
@@ -17,7 +18,7 @@ defconst "false", newBool(false)
 
 defconst "nil", newNil()
 
-defconst "*host-language*", newString("mal")
+defconst "*host-language*", newString("nim2")
 
 ### Functions working with all types
 
@@ -40,6 +41,9 @@ defun "meta", args:
 
 defun "deref", args:
   return args[0].atomVal
+
+defun "time-ms", args:
+  return newInt(int(epochTime() * 1000))
 
 ### Constructors
 
@@ -130,7 +134,11 @@ defun "apply", args:
   if args.len > 2:
     for i in 1 .. args.high-1:
       list.add args[i]
-  list.add args[args.high].seqVal
+  let last = args[args.high]
+  if last.seqVal.isNil: 
+    list.add newSeq[Node]()
+  else:
+    list.add last.seqVal
   return f.getFun()(list)
 
 defun "map", args:
@@ -187,6 +195,10 @@ defun "concat", args:
   return newList(list)
 
 defun "nth", args:
+  let i = args[1].intVal
+  let list = args[0].seqVal
+  if i >= list.len:
+    raise newException(Exception, "nth - Index out of bounds")
   return args[0].seqVal[args[1].intVal]
 
 defun "first", args:
@@ -218,7 +230,7 @@ defun "conj", args:
 defun "assoc", args:
   var hash = args[0].hashVal
   for i in countup(1, args.high, 2):
-    hash[args[i].keyval] = args[i+1]
+    hash.setKey(args[i].keyval, args[i+1])
   return newHashMap(hash)
 
 defun "dissoc", args:
@@ -237,7 +249,10 @@ defun "get", args:
     return newNil()
 
 defun "keys", args:
-  let hash = args[0].hashVal
+  var a = args[0]
+  if args[0].kind == Atom:
+    a = args[0].atomVal
+  let hash = a.hashVal
   var list = newSeq[Node]()
   for i in hash.keys:
     if i[0] == '\xff':

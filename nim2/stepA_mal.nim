@@ -48,6 +48,8 @@ proc isMacroCall(ast: Node, env: Env): bool =
 
 proc eval_ast(ast: Node, env: var Env): Node = 
   var p:Printer
+  dbg:
+    echo "EVAL-AST: " & $ast
   case ast.kind:
     of Symbol:
       return env.get(ast.keyval)
@@ -101,7 +103,7 @@ proc defExclFun(ast: Node, env: var Env): Node =
   return env.set(ast.seqVal[1].keyval, eval(ast.seqVal[2], env))
 
 proc letStarFun(ast: Node, env: var Env): Node = 
-  var nEnv = newEnv("let*", env)
+  var nEnv = newEnv(outer = env)
   case ast.seqVal[1].kind
   of List, Vector:
     for i in countup(0, ast.seqVal[1].seqVal.high, 2):
@@ -131,8 +133,8 @@ proc fnStarFun(ast: Node, env: Env): Node =
     var list = newSeq[Node]()
     for arg in args:
       list.add(arg)
-    var newEnv = newEnv("fn*", fnEnv, ast.seqVal[1], newList(list))
-    return eval(ast.seqVal[2], newEnv)
+    var nEnv = newEnv(outer = fnEnv, binds = ast.seqVal[1], exprs = newList(list))
+    return eval(ast.seqVal[2], nEnv)
   return newProc(fn, ast = ast.seqVal[2], params = ast.seqVal[1], env = env)
 
 proc defMacroExclFun(ast: Node, env: var Env): Node =
@@ -153,11 +155,11 @@ proc tryFun(ast: Node, env: Env): Node =
       return eval(ast.seqVal[1], env)
     except LangException:
       let e = (ref LangException) getCurrentException()
-      var nEnv = newEnv("catch*", cEnv, newList(ast.seqVal[2].seqVal[1]), e.value)
+      var nEnv = newEnv(outer = cEnv, binds = newList(ast.seqVal[2].seqVal[1]), exprs = e.value)
       return eval(ast.seqVal[2].seqVal[2], nEnv)
     except:
       let e = getCurrentException()
-      var nEnv = newEnv("catch*", cEnv, newList(ast.seqVal[2].seqVal[1]), newList(newString(e.msg)))
+      var nEnv = newEnv(outer = cEnv, binds = newList(ast.seqVal[2].seqVal[1]), exprs = newList(newString(e.msg)))
       return eval(ast.seqVal[2].seqVal[2], nEnv)
   else:
     return eval(ast.seqVal[1], env)
@@ -176,7 +178,7 @@ proc eval(ast: Node, env: Env): Node =
     case f.kind
     of Proc:
       ast = f.procVal.ast
-      env = newEnv("closure", f.procVal.env, f.procVal.params, newList(el.seqVal[1 .. ^1]))
+      env = newEnv(outer = f.procVal.env, binds = f.procVal.params, exprs = newList(el.seqVal[1 .. ^1]))
     else:
       # Assuming NativeProc
       return f.nativeProcVal(el.seqVal[1 .. ^1])

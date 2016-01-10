@@ -69,10 +69,7 @@ template dbg*(x: stmt) =
     x
 
 proc error*(str: string) =
-  stderr.write "ERROR - "
-  stderr.write str
-  stderr.write "\n"
-  failure = true
+  raise newException(Exception, str)
 
 proc `position=`*(r: var Reader, value: int) {.inline.} =
   r.pos = value
@@ -242,4 +239,11 @@ proc keyrep*(s: Node): string =
     return ':' & s.stringVal[1 .. s.stringVal.high]
   else:
     return s.stringVal
+
+proc setKey*(h: var NodeHash, key: string, value: Node): Node {.discardable.} = 
+  # TODO check -- otherwise it generates duplicated entries
+  if h.hasKey(key):
+    h.del(key)
+  h[key] = value
+  return value
 

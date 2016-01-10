@@ -44,8 +44,7 @@ proc prStr*(p: Printer, form: Node, printReadably = true): string =
       result = "nil"
     of String:
       if printReadably:
-        result = form.stringVal.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"").replace("\r", "\\r")
-        result = "\"$1\"" % result
+        result = "\"" & form.stringVal.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"").replace("\r", "\\r") & "\""
       else:
         result = form.stringVal
     of Symbol:

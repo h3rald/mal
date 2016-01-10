@@ -59,36 +59,37 @@ proc readAtom*(r: var Reader): Node =
   if token.match(REGEX_KEYWORD):
     return newKeyword(token.substr(1, token.len-1))
   elif token.match(REGEX_STRING):
-    return newString(token.substr(1, token.len-2).replace("\\\"", "\"").replace("\\n", "\n"))
+    return newString(token.substr(1, token.len-2).replace("\\\\", "\\").replace("\\\"", "\"").replace("\\n", "\n"))
   elif token.match(REGEX_INT):
     return newInt(token.parseInt)
-  #elif token.match(REGEX_SYMBOL):
+  elif token == "nil":
+    return newNil()
+  elif token == "false":
+    return newBool(false)
+  elif token == "true":
+    return newBool(true)
   else:
     return newSymbol(token)
-  #else:
-  #  result.kind = Atom
-  #  result.atomVal = token
-  #  result.kindName = "atom"
 
 proc readList*(r: var Reader): Node = 
-  var list = newSeq[Node](0)
+  var list = newSeq[Node]()
   try:
     discard r.peek()
   except:
     error UNMATCHED_PAREN
-    return
   while r.peek() != ")":
     list.add r.readForm()
     discard r.next()
+    if r.tokens.len == r.pos:
+      error UNMATCHED_PAREN
     try:
       discard r.peek()
     except:
       error UNMATCHED_PAREN
-      return
   return newList(list)
 
 proc readVector*(r: var Reader): Node = 
-  var vector = newSeq[Node](0)
+  var vector = newSeq[Node]()
   try:
     discard r.peek()
   except:
@@ -97,11 +98,12 @@ proc readVector*(r: var Reader): Node =
   while r.peek() != "]":
     vector.add r.readForm()
     discard r.next()
+    if r.tokens.len == r.pos:
+      error UNMATCHED_PAREN
     try:
       discard r.peek()
     except:
       error UNMATCHED_BRACKET
-      return
   return newvector(vector)
 
 proc readHashMap*(r: var Reader): Node = 
@@ -111,7 +113,6 @@ proc readHashMap*(r: var Reader): Node =
     discard r.peek()
   except:
     error UNMATCHED_BRACE
-    return
   var key: Node
   while r.peek() != "}":
     key = r.readAtom()
@@ -120,14 +121,14 @@ proc readHashMap*(r: var Reader): Node =
     if key.kind in {String, Keyword}:
       hash.add(key.keyval, r.readForm())
       discard r.next()
+      if r.tokens.len == r.pos:
+        error UNMATCHED_PAREN
       try:
         discard r.peek()
       except:
         error UNMATCHED_BRACE
-        return
     else:
-      error INVALID_HASHMAP_KEY & " (got: $value -- $type)" % ["value", p.prStr(key), "type", key.kindName]
-      return
+      error INVALID_HASHMAP_KEY & " (got: '$value' -- $type)" % ["value", p.prStr(key), "type", key.kindName]
   return newhashMap(hash)
 
 proc readForm*(r: var Reader): Node =
