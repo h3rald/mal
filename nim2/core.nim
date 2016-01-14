@@ -2,7 +2,8 @@ import
   sequtils,
   strutils,
   tables,
-  times
+  times,
+  readline
 
 import
   types,
@@ -38,6 +39,16 @@ defun "deref", args:
 
 defun "time-ms", args:
   return newInt(int(epochTime() * 1000))
+
+defun "readline", args:
+  if args.len > 0:
+    var line = readline(args[0].stringVal)
+    historyAdd(line)
+    return newString(line)
+  else:
+    var line = readline(PROMPT)
+    historyAdd(line)
+    return newString(line)
 
 ### Constructors
 

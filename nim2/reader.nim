@@ -22,20 +22,30 @@ const
   UNMATCHED_DOUBLE_QUOTE = "expected '\"', got EOF"
   INVALID_HASHMAP_KEY = "invalid hashmap key"
 
-proc tokenizer(str: string): seq[string] =
-  result = newSeq[string](0)
+proc tokenizer(str: string): seq[Token] =
+  result = newSeq[Token](0)
   var 
     matches: array[0..0, string]
     s = str
-    token: string
+    token: Token
+    position = 0
+    tokstart = 0
+    tokend = 0
+    linestart = 0
+    column = 0
   while s != "" and s.match(REGEX_TOKEN, matches) and matches[0] != nil and matches[0] != "":
-    token = matches[0]
-    if not token.match(REGEX_COMMENT):
+    tokstart = s.find(matches[0])
+    tokend = matches[0].len
+    position = position + tokstart + tokend
+    linestart = max(s[0 .. position].rfind("\n"), 0)
+    column = position - linestart
+    token = Token(value: matches[0], line: s[0 .. position].count("\n")+1, column: column) 
+    if not token.value.match(REGEX_COMMENT):
       result.add(token)
-    s = s.substr(s.find(token) + token.len, s.len-1)
+    s = s.substr(tokstart + tokend, s.len-1)
     matches[0] = nil
-  if token.len == 0:
-    parsingError UNMATCHED_DOUBLE_QUOTE
+  if token.value.len == 0:
+    parsingError UNMATCHED_DOUBLE_QUOTE, token
     
 proc readForm*(r: var Reader): Node
 
@@ -47,45 +57,48 @@ proc readStr*(str: string): Node =
     noTokensError()
   return r.readForm()
 
-proc peek*(r: Reader): string =
-  result = r.tokens[r.pos]
+proc peek*(r: Reader): Token =
+  return r.tokens[r.pos]
 
-proc next*(r: var Reader): string =
+proc peekprevious(r: Reader): Token =
+  return r.tokens[r.pos-1]
+
+proc next*(r: var Reader): Token =
   result = r.tokens[r.pos]
-  r.position = r.pos + 1
+  r.pos = r.pos + 1
 
 proc readAtom*(r: var Reader): Node =
   let token = r.peek()
-  if token.match(REGEX_KEYWORD):
-    return newKeyword(token.substr(1, token.len-1))
-  elif token.match(REGEX_STRING):
-    return newString(token.substr(1, token.len-2).replace("\\\\", "\\").replace("\\\"", "\"").replace("\\n", "\n"))
-  elif token.match(REGEX_INT):
-    return newInt(token.parseInt)
-  elif token == "nil":
+  if token.value.match(REGEX_KEYWORD):
+    return newKeyword(token.value.substr(1, token.value.len-1))
+  elif token.value.match(REGEX_STRING):
+    return newString(token.value.substr(1, token.value.len-2).replace("\\\\", "\\").replace("\\\"", "\"").replace("\\n", "\n"))
+  elif token.value.match(REGEX_INT):
+    return newInt(token.value.parseInt)
+  elif token.value == "nil":
     return newNil()
-  elif token == "false":
+  elif token.value == "false":
     return newBool(false)
-  elif token == "true":
+  elif token.value == "true":
     return newBool(true)
   else:
-    return newSymbol(token)
+    return newSymbol(token.value)
 
 proc readList*(r: var Reader): Node = 
   var list = newSeq[Node]()
   try:
     discard r.peek()
   except:
-    parsingError UNMATCHED_PAREN
-  while r.peek() != ")":
+    parsingError UNMATCHED_PAREN, r.peekprevious
+  while r.peek.value != ")":
     list.add r.readForm()
     discard r.next()
     if r.tokens.len == r.pos:
-      parsingError UNMATCHED_PAREN
+      parsingError UNMATCHED_PAREN, r.peekprevious
     try:
       discard r.peek()
     except:
-      parsingError UNMATCHED_PAREN
+      parsingError UNMATCHED_PAREN, r.peekprevious
   return newList(list)
 
 proc readVector*(r: var Reader): Node = 
@@ -93,17 +106,17 @@ proc readVector*(r: var Reader): Node =
   try:
     discard r.peek()
   except:
-    parsingError UNMATCHED_BRACKET
+    parsingError UNMATCHED_BRACKET, r.peekprevious
     return
-  while r.peek() != "]":
+  while r.peek.value != "]":
     vector.add r.readForm()
     discard r.next()
     if r.tokens.len == r.pos:
-      parsingError UNMATCHED_PAREN
+      parsingError UNMATCHED_BRACKET, r.peekprevious
     try:
       discard r.peek()
     except:
-      parsingError UNMATCHED_BRACKET
+      parsingError UNMATCHED_BRACKET, r.peekprevious
   return newvector(vector)
 
 proc readHashMap*(r: var Reader): Node = 
@@ -112,9 +125,9 @@ proc readHashMap*(r: var Reader): Node =
   try:
     discard r.peek()
   except:
-    parsingError UNMATCHED_BRACE
+    parsingError UNMATCHED_BRACE, r.peekprevious
   var key: Node
-  while r.peek() != "}":
+  while r.peek.value != "}":
     key = r.readAtom()
     discard r.next()
     var success = false
@@ -122,18 +135,18 @@ proc readHashMap*(r: var Reader): Node =
       hash.add(key.keyval, r.readForm())
       discard r.next()
       if r.tokens.len == r.pos:
-        parsingError UNMATCHED_PAREN
+        parsingError UNMATCHED_BRACE, r.peekprevious
       try:
         discard r.peek()
       except:
-        parsingError UNMATCHED_BRACE
+        parsingError UNMATCHED_BRACE, r.peekprevious
     else:
-      parsingError INVALID_HASHMAP_KEY & " (got: '$value' -- $type)" % ["value", p.prStr(key), "type", key.kindName]
+      parsingError(INVALID_HASHMAP_KEY & " - got: '$value' ($type)" % ["value", p.prStr(key), "type", key.kindName], r.peekprevious)
   return newhashMap(hash)
 
 proc readForm*(r: var Reader): Node =
   var p: Printer
-  case r.peek():
+  case r.peek.value:
     of "{":
       discard r.next() 
       result = r.readHashMap()
@@ -161,7 +174,7 @@ proc readForm*(r: var Reader): Node =
       result = newList(@[newSymbol("deref"), sym])
     of "^":
       discard r.next()
-      if r.peek() == "{":
+      if r.peek.value == "{":
         discard r.next()
         let h = r.readHashMap()
         discard r.next()

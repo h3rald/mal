@@ -2,9 +2,13 @@ import tables, hashes, strutils
 
 type
   Printer* = object
+  Token* = object
+    value*: string
+    line*: int
+    column*: int
   Reader* = object
     pos*: int
-    tokens*: seq[string]
+    tokens*: seq[Token]
   NodeKind* = enum
     List,
     Atom,
@@ -64,12 +68,18 @@ type
 var
   DEBUG* = false
 
+const
+  PROMPT* = "user> "
+
 template dbg*(x: stmt) = 
   if DEBUG:
     x
 
 proc parsingError*(str: string) =
   raise newException(ParsingError, str)
+
+proc parsingError*(str: string, token: Token) =
+  raise newException(ParsingError, str & " [Line: $1, Column: $2]" % [$token.line, $token.column])
 
 proc unhandledExceptionError*(str: string) =
   raise newException(UnhandledExceptionError, str)
@@ -85,9 +95,6 @@ proc noTokensError*() =
 
 proc incorrectValueError*(str: string) =
   raise newException(IncorrectValueError, str)
-
-proc `position=`*(r: var Reader, value: int) {.inline.} =
-  r.pos = value
 
 proc newAtom*(n: Node): Node =
   new(result)
