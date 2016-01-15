@@ -70,19 +70,17 @@ proc next*(r: var Reader): Token =
 proc readAtom*(r: var Reader): Node =
   let token = r.peek()
   if token.value.match(REGEX_KEYWORD):
-    return newKeyword(token.value.substr(1, token.value.len-1))
+    return newKeyword(token)
   elif token.value.match(REGEX_STRING):
-    return newString(token.value.substr(1, token.value.len-2).replace("\\\\", "\\").replace("\\\"", "\"").replace("\\n", "\n"))
+    return newString(token)
   elif token.value.match(REGEX_INT):
-    return newInt(token.value.parseInt)
+    return newInt(token)
   elif token.value == "nil":
-    return newNil()
-  elif token.value == "false":
-    return newBool(false)
-  elif token.value == "true":
-    return newBool(true)
+    return newNil(token)
+  elif token.value == "false" or token.value == "true":
+    return newBool(token)
   else:
-    return newSymbol(token.value)
+    return newSymbol(token)
 
 proc readList*(r: var Reader): Node = 
   var list = newSeq[Node]()

@@ -32,6 +32,7 @@ type
     env*: Env
     isMacro*: bool
   NodeObj* = object
+    token*: Token
     meta*: Node
     case kind*: NodeKind
     of Proc:
@@ -75,11 +76,20 @@ template dbg*(x: stmt) =
   if DEBUG:
     x
 
+proc printPosition*(t: Token): string =
+  return "[Line: $1, Column: $2]" % [$t.line, $t.column]
+
+proc printPosition*(n: Node): string =
+  if n.token.value.isNil:
+    return ""
+  else:
+    return printPosition(n.token)
+
 proc parsingError*(str: string) =
   raise newException(ParsingError, str)
 
 proc parsingError*(str: string, token: Token) =
-  raise newException(ParsingError, str & " [Line: $1, Column: $2]" % [$token.line, $token.column])
+  raise newException(ParsingError, str & printPosition(token))
 
 proc unhandledExceptionError*(str: string) =
   raise newException(UnhandledExceptionError, str)
@@ -117,6 +127,11 @@ proc newNil*(): Node =
   new(result)
   result.kind = Nil
 
+proc newNil*(t: Token): Node = 
+  new(result)
+  result.token = t
+  result.kind = Nil
+
 proc newVector*(nseq: seq[Node]): Node =
   new(result)
   result.kind = Vector
@@ -127,15 +142,36 @@ proc newSymbol*(s: string): Node =
   result.kind = Symbol
   result.stringVal = s
 
+proc newSymbol*(t: Token): Node =
+  new(result)
+  result.kind = Symbol
+  result.token = t
+  result.stringVal = t.value
+
 proc newBool*(s: bool): Node =
   new(result)
   result.kind = Bool
   result.boolVal = s
 
+proc newBool*(t: Token): Node =
+  new(result)
+  result.kind = Bool
+  result.token = t
+  if t.value == "true":
+    result.boolVal = true
+  else:
+    result.boolVal = false
+
 proc newInt*(i: int): Node =
   new(result)
   result.kind = Int
   result.intVal = i
+
+proc newInt*(t: Token): Node =
+  new(result)
+  result.kind = Int
+  result.token = t
+  result.intVal = t.value.parseInt
 
 proc newHashMap*(h: NodeHash): Node =
   new(result)
@@ -150,10 +186,22 @@ proc newString*(s: string): Node =
   result.kind = String
   result.stringVal = s
 
+proc newString*(t: Token): Node = 
+  new(result)
+  result.kind = String
+  result.token = t
+  result.stringVal = t.value.substr(1, t.value.len-2).replace("\\\\", "\\").replace("\\\"", "\"").replace("\\n", "\n")
+
 proc newKeyword*(s: string): Node = 
   new(result)
   result.kind = Keyword
   result.stringVal = '\xff' & s
+
+proc newKeyword*(t: Token): Node = 
+  new(result)
+  result.kind = Keyword
+  result.token = t
+  result.stringVal = '\xff' & t.value.substr(1, t.value.len-1)
 
 proc newNativeProc*(f: NodeProc): Node = 
   new(result)

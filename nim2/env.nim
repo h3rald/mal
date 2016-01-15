@@ -42,6 +42,13 @@ proc get*(env: Env, sym: string): Node =
   else:
     raise newException(UnknownSymbolError, "'$1' not found" % sym)
 
+proc get*(env: Env, sym: Node): Node = 
+  let res = env.lookup(sym.keyval)
+  if not res.isNil:
+    return res.data[sym.keyval]
+  else:
+    raise newException(UnknownSymbolError, "'$1' not found $2" % [sym.keyval, printPosition(sym)])
+
 var MAINENV* = newEnv()
 
 proc defineFunction(sym: string, p: NodeProc) =

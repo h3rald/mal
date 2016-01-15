@@ -49,7 +49,7 @@ proc eval_ast(ast: Node, env: var Env): Node =
     echo "EVAL-AST: " & $ast
   case ast.kind:
     of Symbol:
-      return env.get(ast.keyval)
+      return env.get(ast)
     of List:
       var list = newSeq[Node]()
       for i in ast.seqVal:
