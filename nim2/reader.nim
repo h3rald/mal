@@ -37,9 +37,14 @@ proc tokenizer(str: string): seq[Token] =
     tokstart = s.find(matches[0])
     tokend = matches[0].len
     position = position + tokstart + tokend
-    linestart = max(s[0 .. position].rfind("\n"), 0)
-    column = position - linestart
-    token = Token(value: matches[0], line: s[0 .. position].count("\n")+1, column: column) 
+    linestart = max(str[0 .. position].rfind("\n"), 0)
+    column = position - linestart - 1
+    token = Token(value: matches[0], line: str[0 .. position].count("\n")+1, column: column) 
+    #echo "---"
+    #echo "Token: ", token.value
+    #echo "Position: ", position, " Line Start:", linestart
+    #echo "String: ", s[0 .. position]
+    #echo "Line: ", token.line, " Column: ", token.column
     if not token.value.match(REGEX_COMMENT):
       result.add(token)
     s = s.substr(tokstart + tokend, s.len-1)

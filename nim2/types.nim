@@ -68,6 +68,8 @@ type
 
 var
   DEBUG* = false
+  PROGRAMFILE*: string = nil
+  ARGV* = newSeq[Node]()
 
 const
   PROMPT* = "user> "
@@ -77,7 +79,12 @@ template dbg*(x: stmt) =
     x
 
 proc printPosition*(t: Token): string =
-  return "\n[Line: $1, Column: $2]" % [$t.line, $t.column]
+  var f:string
+  if PROGRAMFILE.isNil:
+    f = "<REPL>"
+  else:
+    f = PROGRAMFILE
+  return "\n[$1: $2, $3]" % [f, $t.line, $t.column]
 
 proc printPosition*(n: Node): string =
   if n.token.value.isNil:

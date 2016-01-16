@@ -4,7 +4,8 @@ import
   strutils,
   readline,
   regex,
-  parseopt2
+  parseopt2,
+  os
 
 import
   types,
@@ -203,21 +204,31 @@ proc eval(ast: Node, env: Env): Node =
 defun "eval", args:
   return eval(args[0], MAINENV)
 
+defun "load-file", args:
+  let f = args[0].stringVal
+  let oldPROGRAMFILE = PROGRAMFILE
+  if not f.existsFile:
+    incorrectValueError "load-file: File '$1' does not exist" % f, args[0]
+  else:
+    PROGRAMFILE = f
+    try:
+      result = eval(readStr(f.readFile), MAINENV)
+    finally:
+      PROGRAMFILE = oldPROGRAMFILE
+    
+
 proc defnative*(s: string) =
   discard eval(readStr(s), MAINENV)
 
 defnative "(def! not (fn* (x) (if x false true)))"
 
-defnative "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))"
+#defnative "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))"
 
 defnative "(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))"
 
 defnative "(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))"
 
 ### Parse Options
-
-var FILE: string = nil
-var ARGV = newSeq[Node]()
 
 for kind, key, val in getopt():
   case kind:
@@ -228,8 +239,8 @@ for kind, key, val in getopt():
         else:
           discard
     of cmdArgument:
-      if FILE == nil:
-        FILE = key
+      if PROGRAMFILE == nil:
+        PROGRAMFILE = key
       else:
         ARGV.add(newString(val))
     else:
@@ -239,7 +250,7 @@ defconst "*ARGV*", newList(ARGV)
 
 ### REPL
 
-if FILE.isNil:
+if PROGRAMFILE.isNil:
   while true:
     try:
       rep(MAINENV)
@@ -250,10 +261,9 @@ if FILE.isNil:
       echo getCurrentException().getStackTrace()
 else:
   try:
-    print(eval(readStr("(load-file \"" & FILE & "\")" % FILE), MAINENV))
+    print(eval(readStr("(load-file \"" & PROGRAMFILE & "\")" % PROGRAMFILE), MAINENV))
   except NoTokensError:
     discard
   except:
     echo getCurrentExceptionMsg()
     echo getCurrentException().getStackTrace()
-
