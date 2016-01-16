@@ -111,7 +111,7 @@ defun "empty?", args:
     if args[0].seqVal.len == 0:
       return newBool(true)
   else:
-    incorrectValueError "empty?: First argument is not a list or vector"
+    incorrectValueError "empty?: First argument is not a list or vector", args[0]
   return newBool(false)
 
 defun "list?", args:
@@ -186,7 +186,7 @@ defun "count", args:
   of List, Vector:
     return newInt(args[0].seqVal.len)
   else:
-    incorrectValueError "count: First argument is not a list or vector"
+    incorrectValueError "count: First argument is not a list or vector", args[0]
 
 defun "cons", args:
   var list = newSeq[Node]()
@@ -203,7 +203,7 @@ defun "nth", args:
   let i = args[1].intVal
   let list = args[0].seqVal
   if i >= list.len:
-    incorrectValueError "nth: Index out of bounds"
+    incorrectValueError "nth: Index out of bounds", args[1]
   return args[0].seqVal[args[1].intVal]
 
 defun "first", args:

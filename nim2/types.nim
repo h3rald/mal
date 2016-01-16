@@ -77,7 +77,7 @@ template dbg*(x: stmt) =
     x
 
 proc printPosition*(t: Token): string =
-  return "[Line: $1, Column: $2]" % [$t.line, $t.column]
+  return "\n[Line: $1, Column: $2]" % [$t.line, $t.column]
 
 proc printPosition*(n: Node): string =
   if n.token.value.isNil:
@@ -105,6 +105,9 @@ proc noTokensError*() =
 
 proc incorrectValueError*(str: string) =
   raise newException(IncorrectValueError, str)
+
+proc incorrectValueError*(str: string, n: Node) =
+  raise newException(IncorrectValueError, str & printPosition(n))
 
 proc newAtom*(n: Node): Node =
   new(result)
